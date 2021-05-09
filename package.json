@@ -1,0 +1,27 @@
+{
+  "name": "znft-core",
+  "version": "1.0.0",
+  "description": "The core contracts of znft bep1155 token and marketplace",
+  "main": "hardhat.config.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prettier:solidity": "./node_modules/.bin/prettier --write contracts/**/*.sol"
+  },
+  "husky": {
+      "hooks": {
+         "pre-push": "npm run prettier:solidity"
+      }
+  },
+  "author": "Sujith Somraaj Sureshkumar",
+  "license": "ISC",
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-etherscan": "^2.1.2",
+    "@nomiclabs/hardhat-truffle5": "^2.0.0",
+    "@nomiclabs/hardhat-web3": "^2.0.0",
+    "husky": "^6.0.0",
+    "prettier": "^2.2.1",
+    "prettier-plugin-solidity": "*",
+    "solhint-plugin-prettier": "^0.0.5"
+  }
+}
