@@ -5,7 +5,7 @@
  require("@nomiclabs/hardhat-truffle5");
  require("@nomiclabs/hardhat-etherscan");
  
- const TESTNET_PRIVATE_KEY = "e837b3ce27609e5241b37e510b4ef9251f6991a45ac1ea8174a2b878e993296b";
+ const TESTNET_PRIVATE_KEY = "a2175155540ae082ea3c289c3fb1fdaf0fec283f2ea1fef17f309aa60dead3a5";
  const BSCSCAN_KEY = "MWH1J12HMFSRGXXWR18C2W8MRSESUV5WVY";
  
  module.exports = {

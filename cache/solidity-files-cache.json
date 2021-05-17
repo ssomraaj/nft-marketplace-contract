@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/sujithsomraaj/Desktop/upwork/znft/contracts/BEP1155.sol": {
-      "lastModificationDate": 1620736312614,
-      "contentHash": "490fa72efee13af345d661725c72eb8d",
+      "lastModificationDate": 1620736349838,
+      "contentHash": "8223b561b07cb95965a029283c4df805",
       "sourceName": "contracts/BEP1155.sol",
       "solcConfig": {
         "version": "0.8.4",
@@ -43,8 +43,8 @@
       ]
     },
     "/Users/sujithsomraaj/Desktop/upwork/znft/contracts/interfaces/IBEP1155.sol": {
-      "lastModificationDate": 1620736110751,
-      "contentHash": "773954fbecb38a4d0db90521cd5cf3fb",
+      "lastModificationDate": 1620736361267,
+      "contentHash": "72f543da7c87ebf1d4e3b1c554d5ac07",
       "sourceName": "contracts/interfaces/IBEP1155.sol",
       "solcConfig": {
         "version": "0.8.4",
