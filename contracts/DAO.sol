@@ -15,6 +15,7 @@ contract DAO is Context, IDAO{
     }
     
     address private _token;
+    address private _admin;
 
     uint256 private _merchantsCount;
     uint256 private _proposalsCount;
@@ -22,8 +23,14 @@ contract DAO is Context, IDAO{
     mapping(address => bool) private _merchant;
     mapping(uint256 => Proposal) private _proposal;
 
+    modifier onlyOwner(){
+        require(_msgSender() == _admin);
+        _;
+    }
+
     constructor(address _tokenContract) {
         _token = _tokenContract;
+        _admin = _msgSender();
     }
 
     function createMerchant(string memory hash) public virtual override returns (bool) {
@@ -54,6 +61,12 @@ contract DAO is Context, IDAO{
             _merchantsCount += 1;
             _merchant[p.merchant] = true;
         }
+        return true;
+    }
+
+    function updateTokenContract(address _newTokenContract) public virtual returns (bool) {
+        require(_newTokenContract != address(0), "Error: New token contract can never be zero");
+        _token = _newTokenContract;
         return true;
     }
 

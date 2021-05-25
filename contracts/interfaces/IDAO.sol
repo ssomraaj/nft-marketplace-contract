@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: ISC 
+//SPDX-License-Identifier: ISC
 
 pragma solidity ^0.8.4;
 
@@ -16,5 +16,4 @@ interface IDAO {
      * `proposalId` will be the listing Id of the proposal.
      */
     function vote(uint256 proposalId) external returns (bool);
-
 }

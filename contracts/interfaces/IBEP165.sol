@@ -9,12 +9,12 @@ pragma solidity ^0.8.4;
  * For implementation see {BEP165}
  */
 
- interface IBEP165 {
-     /**
-      * @dev returns true if this contracts implements the 
-      * interface defined by `interfaceId`.
-      *
-      * Must use less than 30,000 GAS.
-      */
+interface IBEP165 {
+    /**
+     * @dev returns true if this contracts implements the
+     * interface defined by `interfaceId`.
+     *
+     * Must use less than 30,000 GAS.
+     */
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
- }
+}

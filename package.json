@@ -5,12 +5,12 @@
   "main": "hardhat.config.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prettier:solidity": "./node_modules/.bin/prettier --write contracts/**/*.sol"
+    "prettier": "./node_modules/.bin/prettier --write contracts/**/*.sol"
   },
   "husky": {
-      "hooks": {
-         "pre-push": "npm run prettier:solidity"
-      }
+    "hooks": {
+      "pre-push": "npm run prettier:solidity"
+    }
   },
   "author": "Sujith Somraaj Sureshkumar",
   "license": "ISC",
@@ -23,5 +23,9 @@
     "prettier": "^2.2.1",
     "prettier-plugin-solidity": "*",
     "solhint-plugin-prettier": "^0.0.5"
+  },
+  "dependencies": {
+    "react-redux": "^7.2.4",
+    "redux": "^4.1.0"
   }
 }

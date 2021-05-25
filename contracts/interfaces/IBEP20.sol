@@ -7,31 +7,30 @@ pragma solidity ^0.8.4;
  */
 
 interface IBEP20 {
-
     /**
      * @dev returns the name of the token
      */
-    function name() external view returns(string memory);
+    function name() external view returns (string memory);
 
     /**
      * @dev returns the symbol of the token
      */
-    function symbol() external view returns(string memory);
+    function symbol() external view returns (string memory);
 
     /**
      * @dev returns the decimal places of a token
      */
-    function decimals() external view returns(uint8);
- 
+    function decimals() external view returns (uint8);
+
     /**
      * @dev returns the total tokens in existence
      */
-    function totalSupply() external view returns(uint256);
+    function totalSupply() external view returns (uint256);
 
     /**
      * @dev returns the tokens owned by `account`.
      */
-    function balanceOf(address account) external view returns(uint256); 
+    function balanceOf(address account) external view returns (uint256);
 
     /**
      * @dev transfers the `amount` of tokens from caller's account
@@ -41,7 +40,9 @@ interface IBEP20 {
      *
      * Emits a {Transfer} event
      */
-    function transfer(address recipient, uint256 amount) external returns(bool);
+    function transfer(address recipient, uint256 amount)
+        external
+        returns (bool);
 
     /**
      * @dev returns the remaining number of tokens the `spender' can spend
@@ -49,14 +50,17 @@ interface IBEP20 {
      *
      * This value changes when {approve} or {transferFrom} is executed.
      */
-    function allowance(address owner, address spender) external view returns(uint256);
+    function allowance(address owner, address spender)
+        external
+        view
+        returns (uint256);
 
     /**
      * @dev sets `amount` as the `allowance` of the `spender`.
      *
      * returns a boolean value indicating the operation status.
      */
-    function approve(address spender, uint256 amount) external returns(bool);
+    function approve(address spender, uint256 amount) external returns (bool);
 
     /**
      * @dev transfers the `amount` on behalf of `spender` to the `recipient` account.
@@ -65,7 +69,11 @@ interface IBEP20 {
      *
      * Emits a {Transfer} event.
      */
-    function transferFrom(address spender, address recipient, uint256 amount) external returns(bool);
+    function transferFrom(
+        address spender,
+        address recipient,
+        uint256 amount
+    ) external returns (bool);
 
     /**
      * @dev Emitted from tokens are moved from one account('from') to another account ('to)
@@ -75,5 +83,9 @@ interface IBEP20 {
     /**
      * @dev Emitted when allowance of a `spender` is set by the `owner`
      */
-    event Approval(address indexed owner, address indexed spender, uint256 value);
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 value
+    );
 }

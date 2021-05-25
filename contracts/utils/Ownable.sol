@@ -7,12 +7,15 @@ import "./Context.sol";
 contract Ownable is Context {
     address private _owner;
 
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event OwnershipTransferred(
+        address indexed previousOwner,
+        address indexed newOwner
+    );
 
     /**
      * @dev Initializes the contract setting the deployer as initial owner.
      */
-    constructor () {
+    constructor() {
         address msgSender = _msgSender();
         _owner = msgSender;
 
@@ -30,7 +33,7 @@ contract Ownable is Context {
      * @dev Throws error if the function is called by account other than owner
      */
     modifier onlyOwner() {
-        require(_msgSender() == owner(),"Ownable: caller not owner");
+        require(_msgSender() == owner(), "Ownable: caller not owner");
         _;
     }
 
@@ -49,11 +52,13 @@ contract Ownable is Context {
      * @dev Transfers ownership of the contract to a new account (`newOwner`)
      */
     function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner cannot be zero address");
+        require(
+            newOwner != address(0),
+            "Ownable: new owner cannot be zero address"
+        );
         address msgSender = _msgSender();
 
         emit OwnershipTransferred(msgSender, newOwner);
         _owner = newOwner;
     }
-    
 }
