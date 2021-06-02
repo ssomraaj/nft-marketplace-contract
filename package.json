@@ -5,7 +5,7 @@
   "main": "hardhat.config.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prettier": "./node_modules/.bin/prettier --write contracts/**/*.sol"
+    "lint": "./node_modules/.bin/prettier --write contracts/**/*.sol"
   },
   "husky": {
     "hooks": {

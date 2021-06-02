@@ -10,6 +10,8 @@ contract DAO is Context, IDAO{
     struct Proposal{
       bytes hash;
       address merchant;
+      uint8 platformTax;
+      uint8 listingFee;
       uint256 votes;
       bool approved;
     }
@@ -33,12 +35,14 @@ contract DAO is Context, IDAO{
         _admin = _msgSender();
     }
 
-    function createMerchant(string memory hash) public virtual override returns (bool) {
+    function createMerchant(string memory hash, uint8 listingFee, uint8 platformTax) public virtual override returns (bool) {
         _proposalsCount += 1;
 
         _proposal[_proposalsCount] = Proposal(
             bytes(hash),
             _msgSender(),
+            platformTax,
+            listingFee,
             0,
             false
         );
@@ -70,7 +74,7 @@ contract DAO is Context, IDAO{
         return true;
     }
 
-    function isMerchant(address _merchantAddress) public virtual view returns (bool) {
+    function isMerchant(address _merchantAddress) public virtual override view returns (bool) {
         return _merchant[_merchantAddress];
     }
 

@@ -9,6 +9,16 @@
           "internalType": "string",
           "name": "hash",
           "type": "string"
+        },
+        {
+          "internalType": "uint8",
+          "name": "listingFee",
+          "type": "uint8"
+        },
+        {
+          "internalType": "uint8",
+          "name": "platformTax",
+          "type": "uint8"
         }
       ],
       "name": "createMerchant",
@@ -20,6 +30,25 @@
         }
       ],
       "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_merchantAddress",
+          "type": "address"
+        }
+      ],
+      "name": "isMerchant",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {

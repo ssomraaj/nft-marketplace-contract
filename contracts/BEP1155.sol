@@ -5,6 +5,7 @@ pragma solidity ^0.8.4;
 import "./interfaces/IBEP1155.sol";
 import "./interfaces/IBEP1155Metadata.sol";
 import "./interfaces/IBEP1155Receiver.sol";
+import "./interfaces/IDAO.sol";
 import "./utils/Address.sol";
 import "./utils/Context.sol";
 import "./BEP165.sol";
@@ -15,6 +16,9 @@ import "./BEP165.sol";
  */
 contract BEP1155 is Context, BEP165, IBEP1155, IBEP1155MetadataURI {
     using Address for address;
+
+    // Address of DAO to validate minting.
+    address public dao;
 
     // Mapping from token ID to account balances
     mapping (uint256 => mapping(address => uint256)) private _balances;
@@ -28,8 +32,9 @@ contract BEP1155 is Context, BEP165, IBEP1155, IBEP1155MetadataURI {
     /**
      * @dev See {_setURI}.
      */
-    constructor (string memory uri_) {
+    constructor (string memory uri_, address _dao) {
         _setURI(uri_);
+        dao = _dao;
     }
 
     /**
@@ -151,6 +156,16 @@ contract BEP1155 is Context, BEP165, IBEP1155, IBEP1155MetadataURI {
             "BEP1155: transfer caller is not owner nor approved"
         );
         _safeBatchTransferFrom(from, to, ids, amounts, data);
+    }
+
+    /**
+     * @dev mints `tokenId` and `amount` of tokens to the owner.
+     *
+     * `owner` should've to be passed on while minting.
+     */
+    function mint(address _owner, uint256 _tokenId, uint256 _amount) public virtual {
+      require(IDAO(dao).isMerchant(_owner), "DAO: minter should be valid merchant");
+      _mint(_owner, _tokenId, _amount, "0x00");  
     }
 
     /**
