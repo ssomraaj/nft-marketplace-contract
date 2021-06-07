@@ -8,7 +8,7 @@ import "./interfaces/IBEP1155Receiver.sol";
 import "./interfaces/IDAO.sol";
 import "./utils/Address.sol";
 import "./utils/Context.sol";
-import "./BEP165.sol";
+import "./utils/BEP165.sol";
 
 /**
  * @dev Implementation of the basic standard multi-token.
@@ -25,6 +25,9 @@ contract BEP1155 is Context, BEP165, IBEP1155, IBEP1155MetadataURI {
 
     // Mapping from account to operator approvals
     mapping (address => mapping(address => bool)) private _operatorApprovals;
+
+    // Mapping the supply of tokens
+    mapping (uint256 => uint256) private _totalSupply;
 
     // Used as the URI for all token types by relying on ID substitution, e.g. https://token-cdn-domain/{id}.json
     string private _uri;
@@ -57,6 +60,17 @@ contract BEP1155 is Context, BEP165, IBEP1155, IBEP1155MetadataURI {
      */
     function uri(uint256) public view virtual override returns (string memory) {
         return _uri;
+    }
+
+    /**
+     * @dev Total amount of tokens in with a given id.
+     */
+    function totalSupply(uint256 id) public view virtual returns (uint256) {
+        return _totalSupply[id];
+    }
+
+    function exists(uint256 id) public view virtual returns(bool) {
+        return totalSupply(id) > 0;
     }
 
     /**
@@ -165,6 +179,7 @@ contract BEP1155 is Context, BEP165, IBEP1155, IBEP1155MetadataURI {
      */
     function mint(address _owner, uint256 _tokenId, uint256 _amount) public virtual {
       require(IDAO(dao).isMerchant(_owner), "DAO: minter should be valid merchant");
+      require(!exists(_tokenId), "BEP1155: tokenId exits");
       _mint(_owner, _tokenId, _amount, "0x00");  
     }
 
@@ -289,8 +304,9 @@ contract BEP1155 is Context, BEP165, IBEP1155, IBEP1155MetadataURI {
         _beforeTokenTransfer(operator, address(0), account, _asSingletonArray(id), _asSingletonArray(amount), data);
 
         _balances[id][account] += amount;
-        emit TransferSingle(operator, address(0), account, id, amount);
+        _totalSupply[id] += amount;
 
+        emit TransferSingle(operator, address(0), account, id, amount);
         _doSafeTransferAcceptanceCheck(operator, address(0), account, id, amount, data);
     }
 
@@ -313,6 +329,7 @@ contract BEP1155 is Context, BEP165, IBEP1155, IBEP1155MetadataURI {
 
         for (uint i = 0; i < ids.length; i++) {
             _balances[ids[i]][to] += amounts[i];
+            _totalSupply[ids[i]] += amounts[i];
         }
 
         emit TransferBatch(operator, address(0), to, ids, amounts);
@@ -337,8 +354,9 @@ contract BEP1155 is Context, BEP165, IBEP1155, IBEP1155MetadataURI {
 
         uint256 accountBalance = _balances[id][account];
         require(accountBalance >= amount, "BEP1155: burn amount exceeds balance");
-        _balances[id][account] = accountBalance - amount;
 
+        _balances[id][account] = accountBalance - amount;
+        _totalSupply[id] -= amount;
         emit TransferSingle(operator, account, address(0), id, amount);
     }
 
@@ -364,6 +382,7 @@ contract BEP1155 is Context, BEP165, IBEP1155, IBEP1155MetadataURI {
             uint256 accountBalance = _balances[id][account];
             require(accountBalance >= amount, "BEP1155: burn amount exceeds balance");
             _balances[id][account] = accountBalance - amount;
+            _totalSupply[ids[i]] -= amounts[i];
         }
 
         emit TransferBatch(operator, account, address(0), ids, amounts);
