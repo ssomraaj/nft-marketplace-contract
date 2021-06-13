@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.4;
 
-import "../interfaces/IBEP165.sol";
+import "../token/interfaces/IBEP165.sol";
 
 /**
  * @dev Implementation of the {IERC165} interface.

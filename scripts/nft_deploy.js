@@ -1,13 +1,32 @@
-async function main() {
-    const BEP = await ethers.getContractFactory('BEP1155');
-    const contract = await BEP.deploy('https://ipfs.io/ipfs/', '0x833bA1Ab69309Dc6202826800968921F0fdc168C');
+// We require the Hardhat Runtime Environment explicitly here. This is optional 
+// but useful for running the script in a standalone fashion through `node <script>`.
+//
+// When running the script with `hardhat run <script>` you'll find the Hardhat
+// Runtime Environment's members available in the global scope.
+const hre = require("hardhat");
 
-    console.log("Token Contract Deployed at :", contract.address);
+async function main() {
+  // Hardhat always runs the compile task when running scripts with its command
+  // line interface.
+  //
+  // If this script is run directly using `node` you may want to call compile 
+  // manually to make sure everything is compiled
+  // await hre.run('compile');
+
+  // We get the contract to deploy
+  const BEP721 = await hre.ethers.getContractFactory("BEP721");
+  const nft = await BEP721.deploy("TEST", "TST");
+
+  await nft.deployed();
+
+  console.log("NFT deployed to:", nft.address);
 }
 
+// We recommend this pattern to be able to use async/await everywhere
+// and properly handle errors.
 main()
-.then(()=>{process.exit(0)})
-.catch(error => {
-    console.log("Deployment Error: ", error);
+  .then(() => process.exit(0))
+  .catch(error => {
+    console.error(error);
     process.exit(1);
-});
+  });
