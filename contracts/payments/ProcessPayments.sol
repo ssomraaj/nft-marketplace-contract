@@ -204,7 +204,7 @@ contract ProcessPayments is IProcessPayments, Ownable {
         override
         Available(_ticker)
         Stablecoin(_ticker)
-        returns (bool)
+        returns (bool, uint256)
     {
         address spender = _msgSender();
         require(
@@ -212,8 +212,22 @@ contract ProcessPayments is IProcessPayments, Ownable {
             "PoS Error: insufficient allowance for spender"
         );
         address contractAddress = _contracts[bytes(_ticker)];
-        return
-            IBEP20(contractAddress).transferFrom(spender, address(this), _usd);
+        uint256 decimals = IBEP20(contractAddress).decimals();
+
+        uint256 tokens;
+        if (decimals > 8) {
+            tokens = _usd * 10**(decimals - 8);
+        } else {
+            tokens = _usd * 10**(8 - decimals);
+        }
+        return (
+            IBEP20(contractAddress).transferFrom(
+                spender,
+                address(this),
+                tokens
+            ),
+            tokens
+        );
     }
 
     /**
@@ -230,7 +244,7 @@ contract ProcessPayments is IProcessPayments, Ownable {
         virtual
         override
         Available(_ticker)
-        returns (bool)
+        returns (bool, uint256)
     {
         uint256 amount = resolveAmount(_ticker, _usd);
         address user = _msgSender();
@@ -240,8 +254,36 @@ contract ProcessPayments is IProcessPayments, Ownable {
             "PoS Error: Insufficient Approval"
         );
         address contractAddress = _contracts[bytes(_ticker)];
-        return
-            IBEP20(contractAddress).transferFrom(user, address(this), amount);
+        return (
+            IBEP20(contractAddress).transferFrom(user, address(this), amount),
+            amount
+        );
+    }
+
+    /**
+     * @dev used for settle a tokens from the contract
+     * to a user.
+     *
+     * Requirements:
+     * `_ticker` of the token.
+     * `_value` is the amount of tokens (decimals not handled)
+     * `_to` is the address of the user.
+     *
+     * @return bool representing the status of the transaction.
+     */
+    function settle(
+        string memory _ticker,
+        uint256 _value,
+        address _to
+    ) public virtual override Available(_ticker) returns (bool) {
+        require(
+            _msgSender() == address(this),
+            "PoS Error: insufficient previlage"
+        );
+
+        address contractAddress = _contracts[bytes(_ticker)];
+
+        return IBEP20(contractAddress).transfer(_to, _value);
     }
 
     /**

@@ -25,6 +25,7 @@ interface IAuction {
 
     /**
      * @dev allows users to bid the auction for a specific NFT.
+     * using tokens.
      *
      * Requirement:
      * `_auctionId` representing the auction the user is bidding.
@@ -32,5 +33,36 @@ interface IAuction {
      *
      * @return bool representing the status of the bid.
      */
-    function bidAuction(uint256 _auctionId, string memory _currency, uint256 _amount) external returns (bool);
+    function bidAuctionWithToken(uint256 _auctionId, string memory _currency, uint256 _amount) external returns (bool);
+
+    /**
+     * @dev allows users to bid the auction for a specific NFT.
+     * using stablcoins.
+     *
+     * Requirement:
+     * `_auctionId` representing the auction the user is bidding.
+     * `_currency` the ticker of the token the user is using for payments.
+     *
+     * @return bool representing the status of the bid.
+     */
+    function bidAuctionWithStablecoin(uint256 _auctionId, string memory _currency, uint256 _amount) external returns (bool);
+
+
+    /**
+     * @dev releases the auction token to the highest bidder.
+     *
+     * `_auctionId` is the identifier of the auction you wisg to settle the tokens.
+     *
+     * @return bool representing the status of the transaction.
+     */
+    function releaseAuctionToken(uint256 _auctionId) external returns (bool);
+
+    /**
+     * @dev calim the auction token if you're the highest bidder.
+     *
+     * `_auctionId` is the identifier of the auction you wisg to settle the tokens.
+     *
+     * @return bool representing the status of the transaction.
+     */
+    function claimAuctionToken(uint256 _auctionId) external returns (bool);
 }

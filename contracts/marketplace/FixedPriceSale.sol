@@ -50,6 +50,7 @@ contract FixedPriceSale is
 
     struct Buyer {
         bytes method;
+        uint256 amount;
         uint256 boughtAt;
     }
 
@@ -117,6 +118,7 @@ contract FixedPriceSale is
         public
         virtual
         override
+        nonReentrant
         returns (bool)
     {
         Sale storage s = _sale[_saleId];
@@ -124,10 +126,12 @@ contract FixedPriceSale is
             s.status == SaleStatus.ONGOING,
             "Marketplace Error: sale not active"
         );
-        _buyer[_saleId] = Buyer(bytes(_currency), block.timestamp);
         s.modifiedAt = block.timestamp;
         s.status = SaleStatus.COMPLETED;
-        return tPayment(_currency, s.price);
+        (bool status, uint256 tokens) = tPayment(_currency, s.price);
+        settle(_currency, tokens, s.creator);
+        _buyer[_saleId] = Buyer(bytes(_currency), tokens, block.timestamp);
+        return status;
     }
 
     /**
@@ -151,10 +155,12 @@ contract FixedPriceSale is
             s.status == SaleStatus.ONGOING,
             "Marketplace Error: sale not active"
         );
-        _buyer[_saleId] = Buyer(bytes(_currency), block.timestamp);
         s.modifiedAt = block.timestamp;
         s.status = SaleStatus.COMPLETED;
-        return sPayment(_currency, s.price);
+        (bool status, uint256 tokens) = sPayment(_currency, s.price);
+        settle(_currency, tokens, s.creator);
+        _buyer[_saleId] = Buyer(bytes(_currency), tokens, block.timestamp);
+        return status;
     }
 
     /**

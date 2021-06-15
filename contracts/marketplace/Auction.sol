@@ -26,11 +26,11 @@ contract Auction is
         uint256 tokenId;
         uint256 askingPrice;
         uint256 currentPrice;
+        uint256 start;
+        uint256 end;
+        address creator;
         address winner;
         AuctionStatus status;
-        uint256 endsAt;
-        uint256 createdAt;
-        uint256 modifiedAt;
     }
 
     struct BidInfo {
@@ -78,11 +78,11 @@ contract Auction is
             _tokenId,
             _price,
             _price,
-            address(0),
-            AuctionStatus.LIVE,
-            _endsAt,
             block.timestamp,
-            block.timestamp
+            _endsAt,
+            _msgSender(),
+            address(0),
+            AuctionStatus.LIVE
         );
 
         IBEP721(nftContract).safeTransferFrom(
@@ -101,13 +101,130 @@ contract Auction is
      * `_currency` the ticker of the token the user is using for payments.
      * `_amount` representing the bid amount in USD 8-precision.
      */
-    function bidAuction(uint256 _auctionId, string memory _currency, uint256 _amount) public virtual override returns (bool) {
+    function bidAuctionWithToken(
+        uint256 _auctionId,
+        string memory _currency,
+        uint256 _amount
+    ) public virtual override nonReentrant returns (bool) {
         AuctionInfo storage a = _auction[_auctionId];
-        require(a.endsAt >= block.timestamp, "Auction Error: auction already ended");
-        require(a.status != AuctionStatus.COMPLETED, "Auction Error: auction already ended");
-        require(a.currentPrice < _amount, "Auction Error: bid with a higher value");
+        require(
+            a.end >= block.timestamp,
+            "Auction Error: auction already ended"
+        );
+        require(
+            a.status == AuctionStatus.LIVE,
+            "Auction Error: auction already completed"
+        );
+        require(
+            a.currentPrice < _amount,
+            "Auction Error: bid with a higher value"
+        );
 
-        return true;
+        if (a.winner != address(0)) {
+            BidInfo storage b = _bid[a.winner][_auctionId];
+            settle(string(b.currency), b.amount, a.winner);
+        }
+
+        (bool status, uint256 tokens) = tPayment(_currency, _amount);
+        _bid[_msgSender()][_auctionId] = BidInfo(
+            bytes(_currency),
+            tokens,
+            block.timestamp
+        );
+        a.winner = _msgSender();
+        return status;
+    }
+
+    /**
+     * @dev allows users to bid the auction for a specific NFT.
+     *
+     * Requirement:
+     * `_auctionId` representing the auction the user is bidding.
+     * `_currency` the ticker of the token the user is using for payments.
+     * `_amount` representing the bid amount in USD 8-precision.
+     */
+    function bidAuctionWithStablecoin(
+        uint256 _auctionId,
+        string memory _currency,
+        uint256 _amount
+    ) public virtual override nonReentrant returns (bool) {
+        AuctionInfo storage a = _auction[_auctionId];
+        require(
+            a.end >= block.timestamp,
+            "Auction Error: auction already ended"
+        );
+        require(
+            a.status == AuctionStatus.LIVE,
+            "Auction Error: auction already completed"
+        );
+        require(
+            a.currentPrice < _amount,
+            "Auction Error: bid with a higher value"
+        );
+
+        if (a.winner != address(0)) {
+            BidInfo storage b = _bid[a.winner][_auctionId];
+            settle(string(b.currency), b.amount, a.winner);
+        }
+
+        (bool status, uint256 tokens) = sPayment(_currency, _amount);
+        _bid[_msgSender()][_auctionId] = BidInfo(
+            bytes(_currency),
+            tokens,
+            block.timestamp
+        );
+        a.winner = _msgSender();
+        return status;
+    }
+
+    /**
+     * @dev releases the auction token to the highest bidder.
+     *
+     * `_auctionId` is the identifier of the auction you wisg to settle the tokens.
+     *
+     * @return bool representing the status of the transaction.
+     */
+    function releaseAuctionToken(uint256 _auctionId)
+        public
+        virtual
+        override
+        nonReentrant
+        returns (bool)
+    {
+        AuctionInfo storage a = _auction[_auctionId];
+        require(a.creator == _msgSender(), "Auction Error: caller not creator");
+
+        BidInfo storage b = _bid[a.winner][_auctionId];
+        bool status = settle(string(b.currency), b.amount, a.creator);
+
+        IBEP721(nftContract).transferFrom(address(this), a.winner, a.tokenId);
+
+        return status;
+    }
+
+    /**
+     * @dev calim the auction token if you're the highest bidder.
+     *
+     * `_auctionId` is the identifier of the auction you wisg to settle the tokens.
+     *
+     * @return bool representing the status of the transaction.
+     */
+    function claimAuctionToken(uint256 _auctionId)
+        public
+        virtual
+        override
+        nonReentrant
+        returns (bool)
+    {
+        AuctionInfo storage a = _auction[_auctionId];
+        require(a.winner == _msgSender(), "Auction Error: caller not creator");
+
+        BidInfo storage b = _bid[a.winner][_auctionId];
+        bool status = settle(string(b.currency), b.amount, a.creator);
+
+        IBEP721(nftContract).transferFrom(address(this), a.winner, a.tokenId);
+
+        return status;
     }
 
     /**
