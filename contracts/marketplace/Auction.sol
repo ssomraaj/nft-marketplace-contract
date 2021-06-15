@@ -132,6 +132,7 @@ contract Auction is
             block.timestamp
         );
         a.winner = _msgSender();
+        a.currentPrice = _amount;
         return status;
     }
 
@@ -174,6 +175,7 @@ contract Auction is
             block.timestamp
         );
         a.winner = _msgSender();
+        a.currentPrice = _amount;
         return status;
     }
 
@@ -193,7 +195,7 @@ contract Auction is
     {
         AuctionInfo storage a = _auction[_auctionId];
         require(a.creator == _msgSender(), "Auction Error: caller not creator");
-
+        // require(a.end < block.timestamp, "Auction Error: sale not ended");
         BidInfo storage b = _bid[a.winner][_auctionId];
         bool status = settle(string(b.currency), b.amount, a.creator);
 
@@ -215,16 +217,61 @@ contract Auction is
         override
         nonReentrant
         returns (bool)
-    {
+    {   
         AuctionInfo storage a = _auction[_auctionId];
         require(a.winner == _msgSender(), "Auction Error: caller not creator");
-
+        // require(a.end < block.timestamp, "Auction Error: sale not ended");
         BidInfo storage b = _bid[a.winner][_auctionId];
         bool status = settle(string(b.currency), b.amount, a.creator);
 
         IBEP721(nftContract).transferFrom(address(this), a.winner, a.tokenId);
 
         return status;
+    }
+
+    /**
+     * @dev sets the NFT token smart contract.
+     *
+     * `_contractAddress` represents the BEP721 contract address.
+     * `_contractAddress` cannot be a zero address.
+     */
+    function setNftContract(address _contractAddress)
+        public
+        virtual
+        returns (bool)
+    {
+        require(
+            _contractAddress != address(0),
+            "Auction Error: cannot be zero address"
+        );
+        nftContract = _contractAddress;
+        return true;
+    }
+
+    /**
+     * @dev returns the information of every auction with auctionId.
+     *
+     * `auctionId` represents the Id of the auction you wish to query.
+     */
+    function auctionInfo(uint256 _auctionId)
+        public
+        view
+        returns (AuctionInfo memory)
+    {
+        return _auction[_auctionId];
+    }
+
+    /**
+     * @dev returns the information of every auction with auctionId.
+     *
+     * `auctionId` represents the Id of the auction you wish to query.
+     */
+    function bidInfo(address _user, uint256 _auctionId)
+        public
+        view
+        returns (BidInfo memory)
+    {
+        return _bid[_user][_auctionId];
     }
 
     /**

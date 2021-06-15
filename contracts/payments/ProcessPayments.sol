@@ -102,7 +102,7 @@ contract ProcessPayments is IProcessPayments, Ownable {
         );
         bytes memory ticker = bytes(_ticker);
 
-        if (_contracts[ticker] != address(0)) {
+        if (_contracts[ticker] == address(0)) {
             _contracts[ticker] = _contractAddress;
             return true;
         } else {
@@ -165,7 +165,7 @@ contract ProcessPayments is IProcessPayments, Ownable {
             _contracts[ticker] = _newAddress;
             return true;
         } else {
-            revert("PoS Error: contract already initialized.");
+            revert("PoS Error: contract not initialized yet.");
         }
     }
 
@@ -199,9 +199,8 @@ contract ProcessPayments is IProcessPayments, Ownable {
      * 1 Stablecoin is considered as 1 USD.
      */
     function sPayment(string memory _ticker, uint256 _usd)
-        public
+        internal
         virtual
-        override
         Available(_ticker)
         Stablecoin(_ticker)
         returns (bool, uint256)
@@ -240,9 +239,8 @@ contract ProcessPayments is IProcessPayments, Ownable {
      * Price of token is fetched from Chainlink.
      */
     function tPayment(string memory _ticker, uint256 _usd)
-        public
+        internal
         virtual
-        override
         Available(_ticker)
         returns (bool, uint256)
     {
@@ -275,14 +273,8 @@ contract ProcessPayments is IProcessPayments, Ownable {
         string memory _ticker,
         uint256 _value,
         address _to
-    ) public virtual override Available(_ticker) returns (bool) {
-        require(
-            _msgSender() == address(this),
-            "PoS Error: insufficient previlage"
-        );
-
+    ) internal virtual Available(_ticker) returns (bool) {
         address contractAddress = _contracts[bytes(_ticker)];
-
         return IBEP20(contractAddress).transfer(_to, _value);
     }
 
@@ -327,6 +319,17 @@ contract ProcessPayments is IProcessPayments, Ownable {
 
         uint256 tokensAmount = value / price;
         return tokensAmount / 10**decimalCorrection;
+    }
+
+    /**
+     * @dev returns the contract address.
+     */
+    function fetchContract(string memory _ticker)
+        private
+        view
+        returns (address)
+    {
+        return _contracts[bytes(_ticker)];
     }
 
     /**

@@ -43,6 +43,8 @@ contract BEP721 is Context, BEP165, IBEP721, IBEP721Metadata {
     // Mapping from owner to operator approvals
     mapping(address => mapping(address => bool)) private _operatorApprovals;
 
+    bytes4 internal constant MAGIC_ON_ERC721_RECEIVED = 0x150b7a02;
+
     /**
      * @dev Initializes the contract by setting a `name` and a `symbol` to the token collection.
      */
@@ -490,7 +492,7 @@ contract BEP721 is Context, BEP165, IBEP721, IBEP721Metadata {
                     _data
                 )
             returns (bytes4 retval) {
-                return retval == IBEP721Receiver(to).onBEP721Received.selector;
+                return retval == MAGIC_ON_ERC721_RECEIVED;
             } catch (bytes memory reason) {
                 if (reason.length == 0) {
                     revert(

@@ -64,40 +64,40 @@ interface IProcessPayments {
      */
     function markAsStablecoin(string memory _ticker) external returns (bool);
 
-    /**
-     * @dev process payments for stablecoins.
-     *
-     * Requirements:
-     * `_ticker` is the name of the token to be processed.
-     * `_usd` is the amount of USD to be processed in 8-decimals.
-     *
-     * @return bool representing the status of payment.
-     * uint256 representing the amount of tokens processed.
-     */
-    function sPayment(string memory _ticker, uint256 _usd) external returns (bool, uint256);
+    // /**
+    //  * @dev process payments for stablecoins.
+    //  *
+    //  * Requirements:
+    //  * `_ticker` is the name of the token to be processed.
+    //  * `_usd` is the amount of USD to be processed in 8-decimals.
+    //  *
+    //  * @return bool representing the status of payment.
+    //  * uint256 representing the amount of tokens processed.
+    //  */
+    // function sPayment(string memory _ticker, uint256 _usd) external returns (bool, uint256);
 
-    /**
-     * @dev process payments for ERC20 tokens.
-     *
-     * Requirements:
-     * `_ticker` is the name of the token to be processed.
-     * `_usd` is the amount of USD to be processed in 8-decimals.
-     *
-     * @return bool representing the status of payment.
-     * uint256 representing the amount of tokens processed.
-     */
-    function tPayment(string memory _ticker, uint256 _usd) external returns (bool, uint256);
+    // /**
+    //  * @dev process payments for ERC20 tokens.
+    //  *
+    //  * Requirements:
+    //  * `_ticker` is the name of the token to be processed.
+    //  * `_usd` is the amount of USD to be processed in 8-decimals.
+    //  *
+    //  * @return bool representing the status of payment.
+    //  * uint256 representing the amount of tokens processed.
+    //  */
+    // function tPayment(string memory _ticker, uint256 _usd) external returns (bool, uint256);
 
-    /**
-     * @dev used for settle a tokens from the contract
-     * to a user.
-     *
-     * Requirements:
-     * `_ticker` of the token.
-     * `_value` is the amount of tokens (decimals not handled)
-     * `_to` is the address of the user.
-     *
-     * @return bool representing the status of the transaction.
-     */
-    function settle(string memory _ticker, uint256 _value, address _to) external returns (bool);
+    // /**
+    //  * @dev used for settle a tokens from the contract
+    //  * to a user.
+    //  *
+    //  * Requirements:
+    //  * `_ticker` of the token.
+    //  * `_value` is the amount of tokens (decimals not handled)
+    //  * `_to` is the address of the user.
+    //  *
+    //  * @return bool representing the status of the transaction.
+    //  */
+    // function settle(string memory _ticker, uint256 _value, address _to) external returns (bool);
 }
