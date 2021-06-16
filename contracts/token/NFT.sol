@@ -5,6 +5,7 @@ pragma solidity ^0.8.4;
 import "./interfaces/IBEP721.sol";
 import "./interfaces/IBEP721Receiver.sol";
 import "./interfaces/IBEP721Metadata.sol";
+import "../utils/Ownable.sol";
 import "../utils/Address.sol";
 import "../utils/Context.sol";
 import "../utils/Strings.sol";
@@ -15,7 +16,7 @@ import "../utils/BEP165.sol";
  * the Metadata extension, but not including the Enumerable extension, which is available separately as
  * {BEP721Enumerable}.
  */
-contract BEP721 is Context, BEP165, IBEP721, IBEP721Metadata {
+contract BEP721 is Context, BEP165, IBEP721, IBEP721Metadata, Ownable {
     using Address for address;
     using Strings for uint256;
 
@@ -48,7 +49,7 @@ contract BEP721 is Context, BEP165, IBEP721, IBEP721Metadata {
     /**
      * @dev Initializes the contract by setting a `name` and a `symbol` to the token collection.
      */
-    constructor(string memory name_, string memory symbol_) {
+    constructor(string memory name_, string memory symbol_) Ownable() {
         _name = name_;
         _symbol = symbol_;
     }
@@ -529,4 +530,15 @@ contract BEP721 is Context, BEP165, IBEP721, IBEP721Metadata {
         address to,
         uint256 tokenId
     ) internal virtual {}
+
+    /**
+     * @dev is used to kill the NFT contarct in case of migration to an external chain.
+     *
+     * Calling conditions:
+     * `caller` has to be the owner of the SC.
+     */
+    function destroy() public virtual onlyOwner {
+        address payable receiver = payable(owner());
+        selfdestruct(receiver);
+    }
 }
