@@ -7,6 +7,7 @@ import "../payments/ProcessPayments.sol";
 import "../security/ReentrancyGuard.sol";
 import "../token/interfaces/IBEP721Receiver.sol";
 import "../token/interfaces/IBEP721.sol";
+import "../dao/interfaces/IDAO.sol";
 
 contract Auction is
     IAuction,
@@ -15,6 +16,7 @@ contract Auction is
     IBEP721Receiver
 {
     address public nftContract;
+    address public daoContract;
 
     // enumerator to represent the sale status.
     enum AuctionStatus {ENDED, LIVE, COMPLETED, FAILED}
@@ -54,6 +56,18 @@ contract Auction is
         _;
     }
 
+    modifier Elligible() {
+        require(
+            IDAO(daoContract).isMerchant(_msgSender()),
+            "Marketplace Error: merchant not approved"
+        );
+        _;
+    }
+
+    event ListItem(uint256 tokenId, uint256 auctionId, address owner, uint256 price, uint256 endsAt);
+    event Bid(uint256 auctionId, string currency, uint256 amount);
+    event Settle(uint256 auctionId);
+
     /**
      * @dev creates an auction for a specific NFT tokenId.
      *
@@ -90,6 +104,7 @@ contract Auction is
             address(this),
             _tokenId
         );
+        emit ListItem(_tokenId, _auctions, _msgSender(), _price, _endsAt);
         return true;
     }
 
@@ -133,6 +148,8 @@ contract Auction is
         );
         a.winner = _msgSender();
         a.currentPrice = _amount;
+
+        emit Bid(_auctionId, _currency, _amount);
         return status;
     }
 
@@ -176,6 +193,8 @@ contract Auction is
         );
         a.winner = _msgSender();
         a.currentPrice = _amount;
+        
+        emit Bid(_auctionId, _currency, _amount);
         return status;
     }
 
@@ -201,6 +220,7 @@ contract Auction is
 
         IBEP721(nftContract).transferFrom(address(this), a.winner, a.tokenId);
 
+        emit Settle(_auctionId);
         return status;
     }
 
@@ -217,7 +237,7 @@ contract Auction is
         override
         nonReentrant
         returns (bool)
-    {   
+    {
         AuctionInfo storage a = _auction[_auctionId];
         require(a.winner == _msgSender(), "Auction Error: caller not creator");
         // require(a.end < block.timestamp, "Auction Error: sale not ended");
@@ -226,6 +246,7 @@ contract Auction is
 
         IBEP721(nftContract).transferFrom(address(this), a.winner, a.tokenId);
 
+        emit Settle(_auctionId);
         return status;
     }
 
@@ -245,6 +266,25 @@ contract Auction is
             "Auction Error: cannot be zero address"
         );
         nftContract = _contractAddress;
+        return true;
+    }
+
+    /**
+     * @dev sets the DAO smart contract.
+     *
+     * `_contractAddress` represents the BEP721 contract address.
+     * `_contractAddress` cannot be a zero address.
+     */
+    function setDAOContract(address _contractAddress)
+        public
+        virtual
+        returns (bool)
+    {
+        require(
+            _contractAddress != address(0),
+            "Auction Error: cannot be zero address"
+        );
+        daoContract = _contractAddress;
         return true;
     }
 
