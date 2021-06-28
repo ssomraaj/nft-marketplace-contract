@@ -125,7 +125,7 @@ contract TopTime is
         BidInfo storage wBid = _bid[a.winner][_auctionId];
         uint256 time = block.timestamp - wBid.createdAt;
         require(
-            time >= a.toptime,
+            time < a.toptime,
             "TopTime Error: toptime already reached"
         );
         require(
@@ -168,7 +168,7 @@ contract TopTime is
         BidInfo storage wBid = _bid[a.winner][_auctionId];
         uint256 time = block.timestamp - wBid.createdAt;
         require(
-            time >= a.toptime,
+            time < a.toptime,
             "TopTime Error: toptime already reached"
         );
         require(
