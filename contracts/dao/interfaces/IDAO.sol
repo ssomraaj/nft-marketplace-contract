@@ -10,7 +10,7 @@ interface IDAO {
      */
     function createMerchant(
         string memory hash,
-        uint8 listingFee,
+        uint256 listingFee,
         uint8 platformTax
     ) external returns (bool);
 

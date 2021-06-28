@@ -11,7 +11,7 @@ contract DAO is Context, IDAO {
         bytes hash;
         address merchant;
         uint8 platformTax;
-        uint8 listingFee;
+        uint256 listingFee;
         uint256 votes;
         bool approved;
     }
@@ -24,13 +24,14 @@ contract DAO is Context, IDAO {
 
     mapping(address => bool) private _merchant;
     mapping(uint256 => Proposal) private _proposal;
+    mapping(address => bool) private _listed;
 
     modifier onlyOwner() {
         require(_msgSender() == _admin);
         _;
     }
 
-    event CreateMerchant(bytes hash, address merchant, uint8 listingFee, uint8 platformTax, uint256 proposalId);
+    event CreateMerchant(bytes hash, address merchant, uint256 listingFee, uint8 platformTax, uint256 proposalId);
     event Vote(uint256 proposalId, address voter, uint256 znftShares);
 
     constructor(address _tokenContract) {
@@ -40,9 +41,10 @@ contract DAO is Context, IDAO {
 
     function createMerchant(
         string memory hash,
-        uint8 listingFee,
+        uint256 listingFee,
         uint8 platformTax
     ) public virtual override returns (bool) {
+        require(!_listed[_msgSender()], "DAO Error: Already Proposed");
         _proposalsCount += 1;
 
         _proposal[_proposalsCount] = Proposal(
@@ -54,6 +56,7 @@ contract DAO is Context, IDAO {
             false
         );
         emit CreateMerchant(bytes(hash), _msgSender(), listingFee, platformTax, _proposalsCount);
+        _listed[_msgSender()] = true;
         return true;
     }
 

@@ -2,15 +2,15 @@
 
 pragma solidity ^0.8.4;
 
-import "./interfaces/IAuction.sol";
+import "./interfaces/ITopTime.sol";
 import "../payments/ProcessPayments.sol";
 import "../security/ReentrancyGuard.sol";
 import "../token/interfaces/IBEP721Receiver.sol";
 import "../token/interfaces/IBEP721.sol";
 import "../dao/interfaces/IDAO.sol";
 
-contract Auction is
-    IAuction,
+contract TopTime is
+    ITopTime,
     ProcessPayments,
     ReentrancyGuard,
     IBEP721Receiver
@@ -29,7 +29,7 @@ contract Auction is
         uint256 askingPrice;
         uint256 currentPrice;
         uint256 start;
-        uint256 end;
+        uint256 toptime;
         address creator;
         address winner;
         AuctionStatus status;
@@ -51,7 +51,7 @@ contract Auction is
                     _msgSender(),
                     address(this)
                 ),
-            "Marketplace Error: token not approved for sale"
+            "TopTime Error: token not approved for sale"
         );
         _;
     }
@@ -59,12 +59,12 @@ contract Auction is
     modifier Elligible() {
         require(
             IDAO(daoContract).isMerchant(_msgSender()),
-            "Marketplace Error: merchant not approved"
+            "TopTime Error: merchant not approved"
         );
         _;
     }
 
-    event ListItem(uint256 tokenId, uint256 auctionId, address owner, uint256 price, uint256 endsAt);
+    event ListItem(uint256 tokenId, uint256 auctionId, address owner, uint256 price, uint256 toptime);
     event Bid(uint256 auctionId, string currency, uint256 amount);
     event Settle(uint256 auctionId);
 
@@ -74,7 +74,7 @@ contract Auction is
      * Requirement:
      *
      * `_tokenId` represents the NFT token Id to be solved.
-     * `_tokenId` should be approved to be spent by the Marketplace SC.
+     * `_tokenId` should be approved to be spent by the TopTime SC.
      *
      * `_endsAt` represents the duration of auction from start date represented in seconds.
      * `_price` represents the price in USD 8-decimal precision.
@@ -84,7 +84,7 @@ contract Auction is
 
     function createAuction(
         uint256 _tokenId,
-        uint256 _endsAt,
+        uint256 _toptime,
         uint256 _price
     ) public virtual override Approved(_tokenId) Elligible returns (bool) {
         _auctions += 1;
@@ -93,7 +93,7 @@ contract Auction is
             _price,
             _price,
             block.timestamp,
-            _endsAt,
+            _toptime,
             _msgSender(),
             address(0),
             AuctionStatus.LIVE
@@ -104,7 +104,7 @@ contract Auction is
             address(this),
             _tokenId
         );
-        emit ListItem(_tokenId, _auctions, _msgSender(), _price, _endsAt);
+        emit ListItem(_tokenId, _auctions, _msgSender(), _price, _toptime);
         return true;
     }
 
@@ -122,17 +122,15 @@ contract Auction is
         uint256 _amount
     ) public virtual override nonReentrant returns (bool) {
         AuctionInfo storage a = _auction[_auctionId];
+        BidInfo storage wBid = _bid[a.winner][_auctionId];
+        uint256 time = block.timestamp - wBid.createdAt;
         require(
-            a.end >= block.timestamp,
-            "Auction Error: auction already ended"
-        );
-        require(
-            a.status == AuctionStatus.LIVE,
-            "Auction Error: auction already completed"
+            time >= a.toptime,
+            "TopTime Error: toptime already reached"
         );
         require(
             a.currentPrice < _amount,
-            "Auction Error: bid with a higher value"
+            "TopTime Error: bid with a higher value"
         );
 
         if (a.winner != address(0)) {
@@ -167,17 +165,15 @@ contract Auction is
         uint256 _amount
     ) public virtual override nonReentrant returns (bool) {
         AuctionInfo storage a = _auction[_auctionId];
+        BidInfo storage wBid = _bid[a.winner][_auctionId];
+        uint256 time = block.timestamp - wBid.createdAt;
         require(
-            a.end >= block.timestamp,
-            "Auction Error: auction already ended"
-        );
-        require(
-            a.status == AuctionStatus.LIVE,
-            "Auction Error: auction already completed"
+            time >= a.toptime,
+            "TopTime Error: toptime already reached"
         );
         require(
             a.currentPrice < _amount,
-            "Auction Error: bid with a higher value"
+            "TopTime Error: bid with a higher value"
         );
 
         if (a.winner != address(0)) {
@@ -213,8 +209,11 @@ contract Auction is
         returns (bool)
     {
         AuctionInfo storage a = _auction[_auctionId];
-        require(a.creator == _msgSender(), "Auction Error: caller not creator");
-        require(a.end < block.timestamp, "Auction Error: sale not ended");
+        BidInfo storage wBid = _bid[a.winner][_auctionId];
+        uint256 time = block.timestamp - wBid.createdAt;
+
+        require(a.creator == _msgSender(), "TopTime Error: caller not creator");
+        require(time >= a.toptime, "TopTime Error: toptime not ended");
 
         BidInfo storage b = _bid[a.winner][_auctionId];
         bool status = settle(string(b.currency), b.amount, a.creator);
@@ -240,8 +239,12 @@ contract Auction is
         returns (bool)
     {
         AuctionInfo storage a = _auction[_auctionId];
-        require(a.winner == _msgSender(), "Auction Error: caller not creator");
-        require(a.end < block.timestamp, "Auction Error: sale not ended");
+        BidInfo storage wBid = _bid[a.winner][_auctionId];
+        uint256 time = block.timestamp - wBid.createdAt;
+
+        require(a.creator == _msgSender(), "TopTime Error: caller not creator");
+        require(time >= a.toptime, "TopTime Error: toptime not ended");
+
         
         BidInfo storage b = _bid[a.winner][_auctionId];
         bool status = settle(string(b.currency), b.amount, a.creator);
@@ -317,9 +320,9 @@ contract Auction is
     }
 
     /**
-     * To make sure marketplace smart contract supports BEP721.
+     * To make sure TopTime smart contract supports BEP721.
      *
-     * @return a bytes4 interface Id for the marketplace SC.
+     * @return a bytes4 interface Id for the TopTime SC.
      */
     function onBEP721Received(
         address _operator,
