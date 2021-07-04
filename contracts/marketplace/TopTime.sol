@@ -64,7 +64,13 @@ contract TopTime is
         _;
     }
 
-    event ListItem(uint256 tokenId, uint256 auctionId, address owner, uint256 price, uint256 toptime);
+    event ListItem(
+        uint256 tokenId,
+        uint256 auctionId,
+        address owner,
+        uint256 price,
+        uint256 toptime
+    );
     event Bid(uint256 auctionId, string currency, uint256 amount);
     event Settle(uint256 auctionId);
 
@@ -77,7 +83,7 @@ contract TopTime is
      * `_tokenId` should be approved to be spent by the TopTime SC.
      *
      * `_endsAt` represents the duration of auction from start date represented in seconds.
-     * `_price` represents the price in USD 8-decimal precision.
+     * `_price` represents the price in BTC 8-decimal precision.
      *
      * @return bool representing the status of the creation of sale.
      */
@@ -114,7 +120,7 @@ contract TopTime is
      * Requirement:
      * `_auctionId` representing the auction the user is bidding.
      * `_currency` the ticker of the token the user is using for payments.
-     * `_amount` representing the bid amount in USD 8-precision.
+     * `_amount` representing the bid amount in BTC 8-precision.
      */
     function bidAuctionWithToken(
         uint256 _auctionId,
@@ -124,10 +130,7 @@ contract TopTime is
         AuctionInfo storage a = _auction[_auctionId];
         BidInfo storage wBid = _bid[a.winner][_auctionId];
         uint256 time = block.timestamp - wBid.createdAt;
-        require(
-            time < a.toptime,
-            "TopTime Error: toptime already reached"
-        );
+        require(time < a.toptime, "TopTime Error: toptime already reached");
         require(
             a.currentPrice < _amount,
             "TopTime Error: bid with a higher value"
@@ -157,7 +160,7 @@ contract TopTime is
      * Requirement:
      * `_auctionId` representing the auction the user is bidding.
      * `_currency` the ticker of the token the user is using for payments.
-     * `_amount` representing the bid amount in USD 8-precision.
+     * `_amount` representing the bid amount in BTC 8-precision.
      */
     function bidAuctionWithStablecoin(
         uint256 _auctionId,
@@ -167,10 +170,7 @@ contract TopTime is
         AuctionInfo storage a = _auction[_auctionId];
         BidInfo storage wBid = _bid[a.winner][_auctionId];
         uint256 time = block.timestamp - wBid.createdAt;
-        require(
-            time < a.toptime,
-            "TopTime Error: toptime already reached"
-        );
+        require(time < a.toptime, "TopTime Error: toptime already reached");
         require(
             a.currentPrice < _amount,
             "TopTime Error: bid with a higher value"
@@ -189,7 +189,7 @@ contract TopTime is
         );
         a.winner = _msgSender();
         a.currentPrice = _amount;
-        
+
         emit Bid(_auctionId, _currency, _amount);
         return status;
     }
@@ -245,7 +245,6 @@ contract TopTime is
         require(a.creator == _msgSender(), "TopTime Error: caller not creator");
         require(time >= a.toptime, "TopTime Error: toptime not ended");
 
-        
         BidInfo storage b = _bid[a.winner][_auctionId];
         bool status = settle(string(b.currency), b.amount, a.creator);
 

@@ -72,7 +72,7 @@ contract FixedPriceSale is
      * `_tokenId` represents the NFT token Id to be solved.
      * `_tokenId` should be approved to be spent by the Marketplace SC.
      *
-     * `_price` represents the price in USD 8-decimal precision.
+     * `_price` represents the price in BTC 8-decimal precision.
      *
      * @return bool representing the status of the creation of sale.
      */

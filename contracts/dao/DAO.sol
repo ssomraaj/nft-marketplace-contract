@@ -31,7 +31,13 @@ contract DAO is Context, IDAO {
         _;
     }
 
-    event CreateMerchant(bytes hash, address merchant, uint256 listingFee, uint8 platformTax, uint256 proposalId);
+    event CreateMerchant(
+        bytes hash,
+        address merchant,
+        uint256 listingFee,
+        uint8 platformTax,
+        uint256 proposalId
+    );
     event Vote(uint256 proposalId, address voter, uint256 znftShares);
 
     constructor(address _tokenContract) {
@@ -55,7 +61,13 @@ contract DAO is Context, IDAO {
             0,
             false
         );
-        emit CreateMerchant(bytes(hash), _msgSender(), listingFee, platformTax, _proposalsCount);
+        emit CreateMerchant(
+            bytes(hash),
+            _msgSender(),
+            listingFee,
+            platformTax,
+            _proposalsCount
+        );
         _listed[_msgSender()] = true;
         return true;
     }

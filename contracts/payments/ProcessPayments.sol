@@ -190,15 +190,31 @@ contract ProcessPayments is IProcessPayments, Ownable {
     }
 
     /**
+     * @dev process payments with ticker & btc value
+     */
+    function payment(string memory _ticker, uint256 _btc)
+        internal
+        virtual
+        Available(_ticker)
+        returns (bool, uint256)
+    {
+        if (_isStable[bytes(_ticker)] == 1) {
+            return sPayment(_ticker, _btc);
+        } else {
+            return tPayment(_ticker, _btc);
+        }
+    }
+
+    /**
      * @dev process payments for stablecoins.
      *
      * Requirements:
      * `_ticker` is the name of the token to be processed.
-     * `_usd` is the amount of USD to be processed in 8-decimals.
+     * `_btc` is the amount of BTC to be processed in 8-decimals.
      *
      * 1 Stablecoin is considered as 1 USD.
      */
-    function sPayment(string memory _ticker, uint256 _usd)
+    function sPayment(string memory _ticker, uint256 _btc)
         internal
         virtual
         Available(_ticker)
@@ -206,27 +222,42 @@ contract ProcessPayments is IProcessPayments, Ownable {
         returns (bool, uint256)
     {
         address spender = _msgSender();
+        uint256 amount = sAmount(_ticker, _btc);
+        address contractAddress = _contracts[bytes(_ticker)];
+
         require(
-            fetchApproval(_ticker, spender) >= _usd,
+            approval(_ticker, spender) >= amount,
             "PoS Error: insufficient allowance for spender"
         );
-        address contractAddress = _contracts[bytes(_ticker)];
-        uint256 decimals = IBEP20(contractAddress).decimals();
 
-        uint256 tokens;
-        if (decimals > 8) {
-            tokens = _usd * 10**(decimals - 8);
-        } else {
-            tokens = _usd * 10**(8 - decimals);
-        }
         return (
             IBEP20(contractAddress).transferFrom(
                 spender,
                 address(this),
-                tokens
+                amount
             ),
-            tokens
+            amount
         );
+    }
+
+    /**
+     @dev estimates the amount of tokens in eq.btc.
+     */
+    function sAmount(string memory _ticker, uint256 _btc)
+        public
+        view
+        returns (uint256)
+    {
+        address contractAddress = _contracts[bytes(_ticker)];
+        uint256 decimals = IBEP20(contractAddress).decimals();
+        require(decimals <= 18, "Pos Error: asset class not supported");
+        // decimals = x
+        uint256 price = btcPrice();
+        // price - 8 decimal; _btc - 8 decimal;
+        uint256 usd = price * _btc * 10**2;
+
+        uint256 amount = usd / 10**(18 - decimals);
+        return amount;
     }
 
     /**
@@ -234,21 +265,21 @@ contract ProcessPayments is IProcessPayments, Ownable {
      *
      * Requirements:
      * `_ticker` of the token.
-     * `_usd` is the amount of USD to be processed.
+     * `_btc` is the amount of BTC to be processed.
      *
      * Price of token is fetched from Chainlink.
      */
-    function tPayment(string memory _ticker, uint256 _usd)
+    function tPayment(string memory _ticker, uint256 _btc)
         internal
         virtual
         Available(_ticker)
         returns (bool, uint256)
     {
-        uint256 amount = resolveAmount(_ticker, _usd);
+        uint256 amount = tAmount(_ticker, _btc);
         address user = _msgSender();
 
         require(
-            fetchApproval(_ticker, user) >= amount,
+            approval(_ticker, user) >= amount,
             "PoS Error: Insufficient Approval"
         );
         address contractAddress = _contracts[bytes(_ticker)];
@@ -256,6 +287,33 @@ contract ProcessPayments is IProcessPayments, Ownable {
             IBEP20(contractAddress).transferFrom(user, address(this), amount),
             amount
         );
+    }
+
+    /**
+     * @dev resolves the amount of tokens to be paid for the amount of usd.
+     *
+     * Requirements:
+     * `_ticker` represents the token to be accepted for payments.
+     * `_btc` represents the value in BTC.
+     */
+    function tAmount(string memory _ticker, uint256 _btc)
+        private
+        view
+        returns (uint256)
+    {
+        uint256 price = btcPrice();
+        uint256 usd = price * _btc * 10**10;
+
+        uint256 targetPrice = fetchPrice(_ticker);
+        uint256 amount = usd / targetPrice;
+
+        address contractAddress = _contracts[bytes(_ticker)];
+        uint256 decimal = IBEP20(contractAddress).decimals();
+
+        require(decimal <= 18, "PoS Error: asset class cannot be supported");
+        uint256 decimalCorrection = 18 - decimal;
+
+        return amount / 10**decimalCorrection;
     }
 
     /**
@@ -287,7 +345,7 @@ contract ProcessPayments is IProcessPayments, Ownable {
      *
      * @return the approval of any stablecoin in 18-decimal.
      */
-    function fetchApproval(string memory _ticker, address _holder)
+    function approval(string memory _ticker, address _holder)
         private
         view
         returns (uint256)
@@ -297,38 +355,9 @@ contract ProcessPayments is IProcessPayments, Ownable {
     }
 
     /**
-     * @dev resolves the amount of tokens to be paid for the amount of usd.
-     *
-     * Requirements:
-     * `_ticker` represents the token to be accepted for payments.
-     * `_usd` represents the value in USD.
-     */
-    function resolveAmount(string memory _ticker, uint256 _usd)
-        private
-        view
-        returns (uint256)
-    {
-        uint256 value = _usd * 10**18;
-        uint256 price = fetchOraclePrice(_ticker);
-
-        address contractAddress = _contracts[bytes(_ticker)];
-        uint256 decimal = IBEP20(contractAddress).decimals();
-
-        require(decimal <= 18, "PoS Error: asset class cannot be supported");
-        uint256 decimalCorrection = 18 - decimal;
-
-        uint256 tokensAmount = value / price;
-        return tokensAmount / 10**decimalCorrection;
-    }
-
-    /**
      * @dev returns the contract address.
      */
-    function fetchContract(string memory _ticker)
-        private
-        view
-        returns (address)
-    {
+    function contractOf(string memory _ticker) public view returns (address) {
         return _contracts[bytes(_ticker)];
     }
 
@@ -340,13 +369,22 @@ contract ProcessPayments is IProcessPayments, Ownable {
      *
      * @return the current latest price from the oracle.
      */
-    function fetchOraclePrice(string memory _ticker)
-        private
-        view
-        returns (uint256)
-    {
+    function fetchPrice(string memory _ticker) public view returns (uint256) {
         address oracleAddress = _oracles[bytes(_ticker)];
         (, int256 price, , , ) = IAggregatorV3(oracleAddress).latestRoundData();
+        return uint256(price);
+    }
+
+    /**
+     * @dev returns the latest BTC-USD price from chainlink oracle.
+     *
+     * BTC-USD
+     * Kovan: 0x6135b13325bfC4B00278B4abC5e20bbce2D6580e
+     */
+    function btcPrice() public view returns (uint256) {
+        (, int256 price, , , ) =
+            IAggregatorV3(0x6135b13325bfC4B00278B4abC5e20bbce2D6580e)
+                .latestRoundData();
         return uint256(price);
     }
 }

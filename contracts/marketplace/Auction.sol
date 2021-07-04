@@ -64,7 +64,13 @@ contract Auction is
         _;
     }
 
-    event ListItem(uint256 tokenId, uint256 auctionId, address owner, uint256 price, uint256 endsAt);
+    event ListItem(
+        uint256 tokenId,
+        uint256 auctionId,
+        address owner,
+        uint256 price,
+        uint256 endsAt
+    );
     event Bid(uint256 auctionId, string currency, uint256 amount);
     event Settle(uint256 auctionId);
 
@@ -77,7 +83,7 @@ contract Auction is
      * `_tokenId` should be approved to be spent by the Marketplace SC.
      *
      * `_endsAt` represents the duration of auction from start date represented in seconds.
-     * `_price` represents the price in USD 8-decimal precision.
+     * `_price` represents the price in BTC 8-decimal precision.
      *
      * @return bool representing the status of the creation of sale.
      */
@@ -114,9 +120,9 @@ contract Auction is
      * Requirement:
      * `_auctionId` representing the auction the user is bidding.
      * `_currency` the ticker of the token the user is using for payments.
-     * `_amount` representing the bid amount in USD 8-precision.
+     * `_amount` representing the bid amount in BTC 8-precision.
      */
-    function bidAuctionWithToken(
+    function bidAuction(
         uint256 _auctionId,
         string memory _currency,
         uint256 _amount
@@ -149,51 +155,6 @@ contract Auction is
         a.winner = _msgSender();
         a.currentPrice = _amount;
 
-        emit Bid(_auctionId, _currency, _amount);
-        return status;
-    }
-
-    /**
-     * @dev allows users to bid the auction for a specific NFT.
-     *
-     * Requirement:
-     * `_auctionId` representing the auction the user is bidding.
-     * `_currency` the ticker of the token the user is using for payments.
-     * `_amount` representing the bid amount in USD 8-precision.
-     */
-    function bidAuctionWithStablecoin(
-        uint256 _auctionId,
-        string memory _currency,
-        uint256 _amount
-    ) public virtual override nonReentrant returns (bool) {
-        AuctionInfo storage a = _auction[_auctionId];
-        require(
-            a.end >= block.timestamp,
-            "Auction Error: auction already ended"
-        );
-        require(
-            a.status == AuctionStatus.LIVE,
-            "Auction Error: auction already completed"
-        );
-        require(
-            a.currentPrice < _amount,
-            "Auction Error: bid with a higher value"
-        );
-
-        if (a.winner != address(0)) {
-            BidInfo storage b = _bid[a.winner][_auctionId];
-            settle(string(b.currency), b.amount, a.winner);
-        }
-
-        (bool status, uint256 tokens) = sPayment(_currency, _amount);
-        _bid[_msgSender()][_auctionId] = BidInfo(
-            bytes(_currency),
-            tokens,
-            block.timestamp
-        );
-        a.winner = _msgSender();
-        a.currentPrice = _amount;
-        
         emit Bid(_auctionId, _currency, _amount);
         return status;
     }
@@ -242,7 +203,7 @@ contract Auction is
         AuctionInfo storage a = _auction[_auctionId];
         require(a.winner == _msgSender(), "Auction Error: caller not creator");
         require(a.end < block.timestamp, "Auction Error: sale not ended");
-        
+
         BidInfo storage b = _bid[a.winner][_auctionId];
         bool status = settle(string(b.currency), b.amount, a.creator);
 
