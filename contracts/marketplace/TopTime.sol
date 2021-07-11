@@ -122,7 +122,7 @@ contract TopTime is
      * `_currency` the ticker of the token the user is using for payments.
      * `_amount` representing the bid amount in BTC 8-precision.
      */
-    function bidAuctionWithToken(
+    function bidAuction(
         uint256 _auctionId,
         string memory _currency,
         uint256 _amount
@@ -130,7 +130,7 @@ contract TopTime is
         AuctionInfo storage a = _auction[_auctionId];
         BidInfo storage wBid = _bid[a.winner][_auctionId];
         uint256 time = block.timestamp - wBid.createdAt;
-        require(time < a.toptime, "TopTime Error: toptime already reached");
+        require(time >= a.toptime, "TopTime Error: toptime already reached");
         require(
             a.currentPrice < _amount,
             "TopTime Error: bid with a higher value"
@@ -141,47 +141,7 @@ contract TopTime is
             settle(string(b.currency), b.amount, a.winner);
         }
 
-        (bool status, uint256 tokens) = tPayment(_currency, _amount);
-        _bid[_msgSender()][_auctionId] = BidInfo(
-            bytes(_currency),
-            tokens,
-            block.timestamp
-        );
-        a.winner = _msgSender();
-        a.currentPrice = _amount;
-
-        emit Bid(_auctionId, _currency, _amount);
-        return status;
-    }
-
-    /**
-     * @dev allows users to bid the auction for a specific NFT.
-     *
-     * Requirement:
-     * `_auctionId` representing the auction the user is bidding.
-     * `_currency` the ticker of the token the user is using for payments.
-     * `_amount` representing the bid amount in BTC 8-precision.
-     */
-    function bidAuctionWithStablecoin(
-        uint256 _auctionId,
-        string memory _currency,
-        uint256 _amount
-    ) public virtual override nonReentrant returns (bool) {
-        AuctionInfo storage a = _auction[_auctionId];
-        BidInfo storage wBid = _bid[a.winner][_auctionId];
-        uint256 time = block.timestamp - wBid.createdAt;
-        require(time < a.toptime, "TopTime Error: toptime already reached");
-        require(
-            a.currentPrice < _amount,
-            "TopTime Error: bid with a higher value"
-        );
-
-        if (a.winner != address(0)) {
-            BidInfo storage b = _bid[a.winner][_auctionId];
-            settle(string(b.currency), b.amount, a.winner);
-        }
-
-        (bool status, uint256 tokens) = sPayment(_currency, _amount);
+        (bool status, uint256 tokens) = payment(_currency, _amount);
         _bid[_msgSender()][_auctionId] = BidInfo(
             bytes(_currency),
             tokens,

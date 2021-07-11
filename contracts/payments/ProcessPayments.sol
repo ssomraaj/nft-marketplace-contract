@@ -297,7 +297,7 @@ contract ProcessPayments is IProcessPayments, Ownable {
      * `_btc` represents the value in BTC.
      */
     function tAmount(string memory _ticker, uint256 _btc)
-        private
+        public
         view
         returns (uint256)
     {

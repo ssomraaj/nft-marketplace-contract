@@ -21,7 +21,7 @@ interface IAuction {
         uint256 _tokenId,
         uint256 _endsAt,
         uint256 _price
-    ) external returns (bool);
+    ) external payable returns (bool);
 
     /**
      * @dev allows users to bid the auction for a specific NFT.
@@ -51,5 +51,5 @@ interface IAuction {
      *
      * @return bool representing the status of the transaction.
      */
-    function claimAuctionToken(uint256 _auctionId) external returns (bool);
+    function claimAuctionToken(uint256 _auctionId, string memory _hash) external returns (bool);
 }

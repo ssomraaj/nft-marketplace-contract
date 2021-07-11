@@ -154,7 +154,7 @@ contract BEP721 is Context, BEP165, IBEP721, IBEP721Metadata, Ownable {
      * by default, can be overriden in child contracts.
      */
     function _baseURI() internal view virtual returns (string memory) {
-        return "https://ipfs.io/ipfs/";
+        return "https://ipfs.trofi.one/ipfs/";
     }
 
     /**

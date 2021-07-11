@@ -25,11 +25,11 @@ contract DAO is Context, IDAO {
     mapping(address => bool) private _merchant;
     mapping(uint256 => Proposal) private _proposal;
     mapping(address => bool) private _listed;
-
-    modifier onlyOwner() {
-        require(_msgSender() == _admin);
-        _;
-    }
+    mapping(address => string) public ethWallet;
+    mapping(address => string) public bscWallet;
+    mapping(address => string) public btcWallet;
+    mapping(address => uint256) public override listingFee;
+    mapping(address => uint8) public override platformTax;
 
     event CreateMerchant(
         bytes hash,
@@ -38,7 +38,13 @@ contract DAO is Context, IDAO {
         uint8 platformTax,
         uint256 proposalId
     );
+
     event Vote(uint256 proposalId, address voter, uint256 znftShares);
+
+    modifier onlyOwner() {
+        require(_msgSender() == _admin, "DAO Error: caller not admin");
+        _;
+    }
 
     constructor(address _tokenContract) {
         _token = _tokenContract;
@@ -47,28 +53,76 @@ contract DAO is Context, IDAO {
 
     function createMerchant(
         string memory hash,
-        uint256 listingFee,
-        uint8 platformTax
+        uint256 _listingFee,
+        uint8 _platformTax,
+        string memory _ethWallet,
+        string memory _bscWallet,
+        string memory _btcWallet
     ) public virtual override returns (bool) {
-        require(!_listed[_msgSender()], "DAO Error: Already Proposed");
+        require(!_listed[_msgSender()], "DAO Error: already proposed");
+        require(
+            _platformTax > 0 && _platformTax < 100,
+            "DAO Error: invalid platform tax value"
+        );
         _proposalsCount += 1;
 
         _proposal[_proposalsCount] = Proposal(
             bytes(hash),
             _msgSender(),
-            platformTax,
-            listingFee,
+            _platformTax,
+            _listingFee,
             0,
             false
         );
         emit CreateMerchant(
             bytes(hash),
             _msgSender(),
-            listingFee,
-            platformTax,
+            _listingFee,
+            _platformTax,
             _proposalsCount
         );
         _listed[_msgSender()] = true;
+        ethWallet[_msgSender()] = _ethWallet;
+        btcWallet[_msgSender()] = _btcWallet;
+        bscWallet[_msgSender()] = _bscWallet;
+        listingFee[_msgSender()] = _listingFee;
+        platformTax[_msgSender()] = _platformTax;
+        return true;
+    }
+
+    function updateParams(
+        uint256 _proposalId,
+        uint256 _listingFee,
+        uint8 _platformTax,
+        string memory _ethWallet,
+        string memory _bscWallet,
+        string memory _btcWallet
+    ) public virtual override returns (bool) {
+        Proposal storage p = _proposal[_proposalId];
+        require(_listed[_msgSender()], "DAO Error: unregistered merchant");
+        require(
+            _platformTax > 0 && _platformTax < 100,
+            "DAO Error: invalid platform tax value"
+        );
+
+        p.listingFee = _listingFee;
+        p.platformTax = _platformTax;
+        p.votes = 0;
+        p.approved = false;
+
+        emit CreateMerchant(
+            bytes(p.hash),
+            _msgSender(),
+            _listingFee,
+            _platformTax,
+            _proposalId
+        );
+        ethWallet[_msgSender()] = _ethWallet;
+        btcWallet[_msgSender()] = _btcWallet;
+        bscWallet[_msgSender()] = _bscWallet;
+
+        listingFee[_msgSender()] = _listingFee;
+        platformTax[_msgSender()] = _platformTax;
         return true;
     }
 
@@ -76,14 +130,14 @@ contract DAO is Context, IDAO {
         uint256 balance = IBEP20(_token).balanceOf(_msgSender());
         uint256 totalSupply = IBEP20(_token).totalSupply();
 
-        require(balance > 0, "Error: Voter should have ZNFT Shares");
+        require(balance > 0, "Error: voter should have ZNFT Shares");
         require(
             proposalId > 0 && proposalId <= _proposalsCount,
             "Error: Invalid Proposal ID"
         );
 
         Proposal storage p = _proposal[proposalId];
-        require(!p.approved, "Error: Proposal already approved");
+        require(!p.approved, "Error: proposal already approved");
 
         p.votes += balance;
         if (p.votes > totalSupply / 2) {
@@ -139,7 +193,7 @@ contract DAO is Context, IDAO {
     {
         require(
             proposalId > 0 && proposalId <= _proposalsCount,
-            "Error: Invalid Proposal ID"
+            "Error: invalid proposal id"
         );
 
         Proposal storage p = _proposal[proposalId];

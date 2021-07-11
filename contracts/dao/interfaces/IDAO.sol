@@ -10,9 +10,17 @@ interface IDAO {
      */
     function createMerchant(
         string memory hash,
-        uint256 listingFee,
-        uint8 platformTax
+        uint256 _listingFee,
+        uint8 _platformTax,
+        string memory ethWallet,
+        string memory bscWallet,
+        string memory btcWallet
     ) external returns (bool);
+
+    /**
+     * @dev can change the listing features.
+     */
+    function updateParams(uint256 _proposalId, uint256 _listingFee, uint8 _platformTax, string memory ethWallet, string memory bscWallet, string memory btcWallet) external returns (bool);
 
     /**
      * @dev vote for the approval of merchants.
@@ -25,4 +33,14 @@ interface IDAO {
      * @dev returns if an address is a valid `merchant`
      */
     function isMerchant(address _merchantAddress) external view returns (bool);
+
+     /**
+     * @dev returns the listing fee of `_merchantAddress`
+     */
+    function listingFee(address _merchantAddress) external view returns (uint256);
+
+    /**
+     * @dev returns the listing fee of `_merchantAddress`
+     */
+    function platformTax(address _merchantAddress) external view returns (uint8);
 }

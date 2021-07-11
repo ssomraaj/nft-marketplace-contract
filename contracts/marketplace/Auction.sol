@@ -28,6 +28,8 @@ contract Auction is
         uint256 tokenId;
         uint256 askingPrice;
         uint256 currentPrice;
+        uint256 amountPaid;
+        bytes offChainHash;
         uint256 start;
         uint256 end;
         address creator;
@@ -71,8 +73,15 @@ contract Auction is
         uint256 price,
         uint256 endsAt
     );
-    event Bid(uint256 auctionId, string currency, uint256 amount);
+    event UpdateAuction(uint256 auctionId, uint256 ends);
+    event Bid(uint256 auctionId, string currency, uint256 bidValue, uint256 amountPaid);
     event Settle(uint256 auctionId);
+    event UpdateHash(uint256 auctionId, string hash);
+
+    constructor(address _nft, address _dao) {
+        nftContract = _nft;
+        daoContract = _dao;
+    }
 
     /**
      * @dev creates an auction for a specific NFT tokenId.
@@ -92,12 +101,19 @@ contract Auction is
         uint256 _tokenId,
         uint256 _endsAt,
         uint256 _price
-    ) public virtual override Approved(_tokenId) Elligible returns (bool) {
+    ) public payable virtual override Approved(_tokenId) Elligible returns (bool) {
+        uint256 fee = listingFee();
+        
+        require(msg.value == fee, "Auction Error: listing fee is not equal");
+        // payable(daoContract).transfer(msg.value);
+
         _auctions += 1;
         _auction[_auctions] = AuctionInfo(
             _tokenId,
             _price,
             _price,
+            0,
+            bytes("0"),
             block.timestamp,
             _endsAt,
             _msgSender(),
@@ -110,8 +126,13 @@ contract Auction is
             address(this),
             _tokenId
         );
+
         emit ListItem(_tokenId, _auctions, _msgSender(), _price, _endsAt);
         return true;
+    }
+
+    function listingFee() public view returns (uint256) {
+       return IDAO(daoContract).listingFee(_msgSender());
     }
 
     /**
@@ -120,7 +141,7 @@ contract Auction is
      * Requirement:
      * `_auctionId` representing the auction the user is bidding.
      * `_currency` the ticker of the token the user is using for payments.
-     * `_amount` representing the bid amount in BTC 8-precision.
+     * `_amount` representing the bid amount in BTC 8-precision. (Platform Tax)
      */
     function bidAuction(
         uint256 _auctionId,
@@ -128,6 +149,10 @@ contract Auction is
         uint256 _amount
     ) public virtual override nonReentrant returns (bool) {
         AuctionInfo storage a = _auction[_auctionId];
+        
+        uint8 merchantTax = IDAO(daoContract).platformTax(a.creator);
+        uint256 bidValue = (_amount * 100)/merchantTax;
+
         require(
             a.end >= block.timestamp,
             "Auction Error: auction already ended"
@@ -137,7 +162,7 @@ contract Auction is
             "Auction Error: auction already completed"
         );
         require(
-            a.currentPrice < _amount,
+            a.currentPrice < bidValue,
             "Auction Error: bid with a higher value"
         );
 
@@ -146,16 +171,18 @@ contract Auction is
             settle(string(b.currency), b.amount, a.winner);
         }
 
-        (bool status, uint256 tokens) = tPayment(_currency, _amount);
+        (bool status, uint256 tokens) = payment(_currency, _amount);
         _bid[_msgSender()][_auctionId] = BidInfo(
             bytes(_currency),
             tokens,
             block.timestamp
         );
-        a.winner = _msgSender();
-        a.currentPrice = _amount;
 
-        emit Bid(_auctionId, _currency, _amount);
+        a.winner = _msgSender();
+        a.currentPrice = bidValue;
+        a.amountPaid = _amount;
+
+        emit Bid(_auctionId, _currency, bidValue, _amount);
         return status;
     }
 
@@ -187,13 +214,41 @@ contract Auction is
     }
 
     /**
-     * @dev calim the auction token if you're the highest bidder.
+     * @dev can restart the auction with a new endtime.
+     */
+    function restartAuction(uint256 _auctionId, uint256 _newEndTime)
+        public 
+        virtual
+        nonReentrant
+        returns (bool)
+    {
+        AuctionInfo storage a = _auction[_auctionId];
+        require(a.creator == _msgSender(), "Auction Error: caller not creator");
+        require(a.end < block.timestamp, "Auction Error: sale not ended");
+
+        a.winner = address(0);
+        a.currentPrice = 0;
+        a.amountPaid = 0;
+        a.offChainHash = bytes("0");
+
+        a.start = block.timestamp;
+        a.end = _newEndTime;
+
+        a.winner = address(0);
+        a.status = AuctionStatus.LIVE;
+
+        emit UpdateAuction(_auctionId, _newEndTime);
+        return true;
+    }
+
+    /**
+     * @dev claim the auction token if you're the highest bidder.
      *
      * `_auctionId` is the identifier of the auction you wisg to settle the tokens.
      *
      * @return bool representing the status of the transaction.
      */
-    function claimAuctionToken(uint256 _auctionId)
+    function claimAuctionToken(uint256 _auctionId, string memory _hash)
         public
         virtual
         override
@@ -201,16 +256,12 @@ contract Auction is
         returns (bool)
     {
         AuctionInfo storage a = _auction[_auctionId];
-        require(a.winner == _msgSender(), "Auction Error: caller not creator");
+        require(a.winner == _msgSender(), "Auction Error: caller not winner");
         require(a.end < block.timestamp, "Auction Error: sale not ended");
 
-        BidInfo storage b = _bid[a.winner][_auctionId];
-        bool status = settle(string(b.currency), b.amount, a.creator);
-
-        IBEP721(nftContract).transferFrom(address(this), a.winner, a.tokenId);
-
-        emit Settle(_auctionId);
-        return status;
+        a.offChainHash = bytes(_hash);
+        emit UpdateHash(_auctionId, _hash);
+        return true;
     }
 
     /**

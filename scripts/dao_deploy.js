@@ -1,6 +1,6 @@
 async function main() {
     const DAO = await ethers.getContractFactory("DAO");
-    const contract = await DAO.deploy("0x45743228d93C9Ce6A8738A58E1d632F8270C12Ac");
+    const contract = await DAO.deploy("0x833bA1Ab69309Dc6202826800968921F0fdc168C");
 
     console.log("Token Contract Deployed at :", contract.address);
 }
