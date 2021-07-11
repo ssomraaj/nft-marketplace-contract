@@ -32,18 +32,5 @@ interface IFixedPriceSale {
      * `_currency` represents the TICKER of the currency. 
      * Eg., BTC for bitcoin.
      */
-    function buySaleWithTokens(uint256 _saleId, string memory _currency) external returns (bool);
-
-
-    /**
-     * @dev buy sale with a valid acceptable stablecoin.
-     *
-     * Requirements:
-     * 
-     * `_saleId` represents the identifier for each sale.
-     * `_currency` represents the TICKER of the currency. 
-     * Eg., BTC for bitcoin.
-     */
-    function buySaleWithStableCoins(uint256 _saleId, string memory _currency) external returns (bool);
-  
+    function buySale(uint256 _saleId, string memory _currency) external returns (bool);  
 }

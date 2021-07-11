@@ -7,6 +7,7 @@ import "../payments/ProcessPayments.sol";
 import "../security/ReentrancyGuard.sol";
 import "../token/interfaces/IBEP721Receiver.sol";
 import "../token/interfaces/IBEP721.sol";
+import "../dao/interfaces/IDAO.sol";
 
 /**
  * The Implmenetation of `IMarketplace`
@@ -18,8 +19,9 @@ contract FixedPriceSale is
     ReentrancyGuard,
     IBEP721Receiver
 {
-    // ZNFT token Contract
+    // ZNFT token Contract & DAO Contract
     address public nftContract;
+    address public daoContract;
 
     // enumerator to represent the sale status.
     enum SaleStatus {COMPLETED, ONGOING, FAILED}
@@ -39,13 +41,19 @@ contract FixedPriceSale is
         _;
     }
 
+    modifier Elligible() {
+        require(
+            IDAO(daoContract).isMerchant(_msgSender()),
+            "Marketplace Error: merchant not approved"
+        );
+        _;
+    }
+
     struct Sale {
         uint256 tokenId;
         uint256 price;
         address creator;
         SaleStatus status;
-        uint256 createdAt;
-        uint256 modifiedAt;
     }
 
     struct Buyer {
@@ -57,12 +65,18 @@ contract FixedPriceSale is
     mapping(uint256 => Sale) private _sale;
     mapping(uint256 => Buyer) private _buyer;
 
+    event CreateSale(uint256 saleId, uint256 tokenId, uint256 price, address creator);
+    event BuySale(uint256 saleId, address buyer);
+
     /**
      * @dev initializes the ProcessPayments Child SC inside Marketplace
      *
      * Payments in marketplace is handled by process payments SC
      */
-    constructor() ProcessPayments() {}
+    constructor(address _nft, address _dao) {
+        nftContract = _nft;
+        daoContract = _dao;
+    }
 
     /**
      * @dev creates a sale for a specific NFT tokenId.
@@ -82,6 +96,7 @@ contract FixedPriceSale is
         virtual
         override
         Approved(_tokenId)
+        Elligible
         nonReentrant
         returns (bool)
     {
@@ -91,16 +106,16 @@ contract FixedPriceSale is
             _tokenId,
             _price,
             _msgSender(),
-            SaleStatus.ONGOING,
-            block.timestamp,
-            block.timestamp
+            SaleStatus.ONGOING
         );
+
         IBEP721(nftContract).safeTransferFrom(
             _msgSender(),
             address(this),
             _tokenId
         );
-
+        
+        emit CreateSale(_sales, _tokenId, _price, _msgSender());
         return true;
     }
 
@@ -114,7 +129,7 @@ contract FixedPriceSale is
      * Eg., BTC for bitcoin.
      * @return bool representing the status of purchase.
      */
-    function buySaleWithTokens(uint256 _saleId, string memory _currency)
+    function buySale(uint256 _saleId, string memory _currency)
         public
         virtual
         override
@@ -126,41 +141,15 @@ contract FixedPriceSale is
             s.status == SaleStatus.ONGOING,
             "Marketplace Error: sale not active"
         );
-        s.modifiedAt = block.timestamp;
-        s.status = SaleStatus.COMPLETED;
-        (bool status, uint256 tokens) = tPayment(_currency, s.price);
-        settle(_currency, tokens, s.creator);
-        _buyer[_saleId] = Buyer(bytes(_currency), tokens, block.timestamp);
-        return status;
-    }
 
-    /**
-     * @dev buy sale with a valid acceptable asset.
-     *
-     * Requirements:
-     *
-     * `_saleId` represents the identifier for each sale.
-     * `_currency` represents the TICKER of the currency.
-     * Eg., BTC for bitcoin.
-     * @return bool representing the status of purchase.
-     */
-    function buySaleWithStableCoins(uint256 _saleId, string memory _currency)
-        public
-        virtual
-        override
-        returns (bool)
-    {
-        Sale storage s = _sale[_saleId];
-        require(
-            s.status == SaleStatus.ONGOING,
-            "Marketplace Error: sale not active"
-        );
-        s.modifiedAt = block.timestamp;
         s.status = SaleStatus.COMPLETED;
-        (bool status, uint256 tokens) = sPayment(_currency, s.price);
-        settle(_currency, tokens, s.creator);
+        (bool status, uint256 tokens) = payment(_currency, s.price);
+        bool status1 = settle(_currency, tokens, s.creator);
+
         _buyer[_saleId] = Buyer(bytes(_currency), tokens, block.timestamp);
-        return status;
+        IBEP721(nftContract).transferFrom(address(this), _msgSender(), s.tokenId);
+        emit BuySale(_saleId, _msgSender());
+        return status && status1;
     }
 
     /**
