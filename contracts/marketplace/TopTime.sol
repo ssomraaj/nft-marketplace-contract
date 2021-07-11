@@ -28,6 +28,8 @@ contract TopTime is
         uint256 tokenId;
         uint256 askingPrice;
         uint256 currentPrice;
+        uint256 amountPaid;
+        bytes offChainHash;
         uint256 start;
         uint256 toptime;
         address creator;
@@ -71,8 +73,15 @@ contract TopTime is
         uint256 price,
         uint256 toptime
     );
-    event Bid(uint256 auctionId, string currency, uint256 amount);
+    event UpdateAuction(uint256 auctionId);
+    event Bid(uint256 auctionId, string currency, uint256 bidValue, uint256 amountPaid);
     event Settle(uint256 auctionId);
+    event UpdateHash(uint256 auctionId, string hash);
+
+    constructor(address _nft, address _dao) {
+        nftContract = _nft;
+        daoContract = _dao;
+    }
 
     /**
      * @dev creates an auction for a specific NFT tokenId.
@@ -92,12 +101,17 @@ contract TopTime is
         uint256 _tokenId,
         uint256 _toptime,
         uint256 _price
-    ) public virtual override Approved(_tokenId) Elligible returns (bool) {
+    ) public payable virtual override Approved(_tokenId) Elligible returns (bool) {
+        uint256 fee = listingFee();
+        require(msg.value == fee, "TopTime Error: listing fee is not equal");
+
         _auctions += 1;
         _auction[_auctions] = AuctionInfo(
             _tokenId,
             _price,
             _price,
+            0,
+            bytes("0"),
             block.timestamp,
             _toptime,
             _msgSender(),
@@ -112,6 +126,10 @@ contract TopTime is
         );
         emit ListItem(_tokenId, _auctions, _msgSender(), _price, _toptime);
         return true;
+    }
+
+    function listingFee() public view returns (uint256) {
+       return IDAO(daoContract).listingFee(_msgSender());
     }
 
     /**
@@ -129,12 +147,16 @@ contract TopTime is
     ) public virtual override nonReentrant returns (bool) {
         AuctionInfo storage a = _auction[_auctionId];
         BidInfo storage wBid = _bid[a.winner][_auctionId];
+
         uint256 time = block.timestamp - wBid.createdAt;
         require(time >= a.toptime, "TopTime Error: toptime already reached");
         require(
             a.currentPrice < _amount,
             "TopTime Error: bid with a higher value"
         );
+
+        uint8 merchantTax = IDAO(daoContract).platformTax(a.creator);
+        uint256 bidValue = (_amount * 100)/merchantTax;
 
         if (a.winner != address(0)) {
             BidInfo storage b = _bid[a.winner][_auctionId];
@@ -148,9 +170,10 @@ contract TopTime is
             block.timestamp
         );
         a.winner = _msgSender();
-        a.currentPrice = _amount;
+        a.currentPrice = bidValue;
+        a.amountPaid = _amount;
 
-        emit Bid(_auctionId, _currency, _amount);
+        emit Bid(_auctionId, _currency, bidValue, _amount);
         return status;
     }
 
@@ -185,16 +208,11 @@ contract TopTime is
     }
 
     /**
-     * @dev calim the auction token if you're the highest bidder.
-     *
-     * `_auctionId` is the identifier of the auction you wisg to settle the tokens.
-     *
-     * @return bool representing the status of the transaction.
+     * @dev can restart the auction with a new endtime.
      */
-    function claimAuctionToken(uint256 _auctionId)
-        public
+    function restartAuction(uint256 _auctionId)
+        public 
         virtual
-        override
         nonReentrant
         returns (bool)
     {
@@ -205,13 +223,45 @@ contract TopTime is
         require(a.creator == _msgSender(), "TopTime Error: caller not creator");
         require(time >= a.toptime, "TopTime Error: toptime not ended");
 
-        BidInfo storage b = _bid[a.winner][_auctionId];
-        bool status = settle(string(b.currency), b.amount, a.creator);
+        a.winner = address(0);
+        a.currentPrice = 0;
+        a.amountPaid = 0;
+        a.offChainHash = bytes("0");
 
-        IBEP721(nftContract).transferFrom(address(this), a.winner, a.tokenId);
+        a.start = block.timestamp;
 
-        emit Settle(_auctionId);
-        return status;
+        a.winner = address(0);
+        a.status = AuctionStatus.LIVE;
+
+        emit UpdateAuction(_auctionId);
+        return true;
+    }
+
+    /**
+     * @dev calim the auction token if you're the highest bidder.
+     *
+     * `_auctionId` is the identifier of the auction you wisg to settle the tokens.
+     *
+     * @return bool representing the status of the transaction.
+     */
+    function claimAuctionToken(uint256 _auctionId, string memory _hash)
+        public
+        virtual
+        override
+        nonReentrant
+        returns (bool)
+    {
+        AuctionInfo storage a = _auction[_auctionId];
+        BidInfo storage wBid = _bid[a.winner][_auctionId];
+        uint256 time = block.timestamp - wBid.createdAt;
+
+        require(a.winner == _msgSender(), "TopTime Error: caller not winner");
+        require(time >= a.toptime, "TopTime Error: toptime not ended");
+
+        a.offChainHash = bytes(_hash);
+
+        emit UpdateHash(_auctionId, _hash);
+        return true;
     }
 
     /**
