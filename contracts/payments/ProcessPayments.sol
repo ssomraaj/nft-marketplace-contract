@@ -9,6 +9,7 @@ import "../utils/Context.sol";
 import "../utils/Ownable.sol";
 
 contract ProcessPayments is IProcessPayments, Ownable {
+    address public settlement;
     /**
      * Mapping of bytes string representing token ticker to an oracle address.
      */
@@ -170,6 +171,23 @@ contract ProcessPayments is IProcessPayments, Ownable {
     }
 
     /**
+     * @dev replaces the settlement address.
+     */
+    function replaceSettlementAddress(address _newAddress)
+        public
+        virtual
+        onlyOwner
+        returns (bool)
+    {
+        require(
+            _newAddress != address(0),
+            "PoS Error: settlement address cannot be zero"
+        );
+        settlement = _newAddress;
+        return true;
+    }
+
+    /**
      * @dev marks a specific asset as stablecoin.
      *
      * Requirements:
@@ -231,11 +249,7 @@ contract ProcessPayments is IProcessPayments, Ownable {
         );
 
         return (
-            IBEP20(contractAddress).transferFrom(
-                spender,
-                address(this),
-                amount
-            ),
+            IBEP20(contractAddress).transferFrom(spender, settlement, amount),
             amount
         );
     }
@@ -284,7 +298,7 @@ contract ProcessPayments is IProcessPayments, Ownable {
         );
         address contractAddress = _contracts[bytes(_ticker)];
         return (
-            IBEP20(contractAddress).transferFrom(user, address(this), amount),
+            IBEP20(contractAddress).transferFrom(user, settlement, amount),
             amount
         );
     }

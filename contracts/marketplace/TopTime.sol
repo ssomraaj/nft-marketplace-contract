@@ -74,7 +74,12 @@ contract TopTime is
         uint256 toptime
     );
     event UpdateAuction(uint256 auctionId);
-    event Bid(uint256 auctionId, string currency, uint256 bidValue, uint256 amountPaid);
+    event Bid(
+        uint256 auctionId,
+        string currency,
+        uint256 bidValue,
+        uint256 amountPaid
+    );
     event Settle(uint256 auctionId);
     event UpdateHash(uint256 auctionId, string hash);
 
@@ -101,7 +106,15 @@ contract TopTime is
         uint256 _tokenId,
         uint256 _toptime,
         uint256 _price
-    ) public payable virtual override Approved(_tokenId) Elligible returns (bool) {
+    )
+        public
+        payable
+        virtual
+        override
+        Approved(_tokenId)
+        Elligible
+        returns (bool)
+    {
         uint256 fee = listingFee();
         require(msg.value == fee, "TopTime Error: listing fee is not equal");
 
@@ -129,7 +142,7 @@ contract TopTime is
     }
 
     function listingFee() public view returns (uint256) {
-       return IDAO(daoContract).listingFee(_msgSender());
+        return IDAO(daoContract).listingFee(_msgSender());
     }
 
     /**
@@ -156,7 +169,7 @@ contract TopTime is
         );
 
         uint8 merchantTax = IDAO(daoContract).platformTax(a.creator);
-        uint256 bidValue = (_amount * 100)/merchantTax;
+        uint256 bidValue = (_amount * 100) / merchantTax;
 
         if (a.winner != address(0)) {
             BidInfo storage b = _bid[a.winner][_auctionId];
@@ -211,7 +224,7 @@ contract TopTime is
      * @dev can restart the auction with a new endtime.
      */
     function restartAuction(uint256 _auctionId)
-        public 
+        public
         virtual
         nonReentrant
         returns (bool)

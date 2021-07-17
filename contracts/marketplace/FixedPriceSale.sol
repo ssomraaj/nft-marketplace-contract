@@ -65,7 +65,12 @@ contract FixedPriceSale is
     mapping(uint256 => Sale) private _sale;
     mapping(uint256 => Buyer) private _buyer;
 
-    event CreateSale(uint256 saleId, uint256 tokenId, uint256 price, address creator);
+    event CreateSale(
+        uint256 saleId,
+        uint256 tokenId,
+        uint256 price,
+        address creator
+    );
     event BuySale(uint256 saleId, address buyer);
 
     /**
@@ -114,7 +119,7 @@ contract FixedPriceSale is
             address(this),
             _tokenId
         );
-        
+
         emit CreateSale(_sales, _tokenId, _price, _msgSender());
         return true;
     }
@@ -147,7 +152,11 @@ contract FixedPriceSale is
         bool status1 = settle(_currency, tokens, s.creator);
 
         _buyer[_saleId] = Buyer(bytes(_currency), tokens, block.timestamp);
-        IBEP721(nftContract).transferFrom(address(this), _msgSender(), s.tokenId);
+        IBEP721(nftContract).transferFrom(
+            address(this),
+            _msgSender(),
+            s.tokenId
+        );
         emit BuySale(_saleId, _msgSender());
         return status && status1;
     }

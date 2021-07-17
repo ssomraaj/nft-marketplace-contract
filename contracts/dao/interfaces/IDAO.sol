@@ -27,7 +27,22 @@ interface IDAO {
      *
      * `proposalId` will be the listing Id of the proposal.
      */
-    function vote(uint256 proposalId) external returns (bool);
+    function vote(uint256 _proposalId) external returns (bool);
+
+    /**
+     * @dev allows ZNFT share holders to create a voting proposal.
+     */
+    function createDistribution(address[] memory _earners, uint256[] memory _percentages) external returns (bool);
+    
+    /**
+     * @dev allows ZNFT share holders to vote for a distribution.
+     */
+    function voteDistribution(uint256 _distributionId, bool _support) external returns (bool);
+
+    /**
+     * @dev allows the distribution of the rewards
+     */
+    function distribute(uint256 _distributionId) external returns(bool);
 
     /**
      * @dev returns if an address is a valid `merchant`

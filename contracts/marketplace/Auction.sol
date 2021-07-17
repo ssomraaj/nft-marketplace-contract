@@ -74,7 +74,12 @@ contract Auction is
         uint256 endsAt
     );
     event UpdateAuction(uint256 auctionId, uint256 ends);
-    event Bid(uint256 auctionId, string currency, uint256 bidValue, uint256 amountPaid);
+    event Bid(
+        uint256 auctionId,
+        string currency,
+        uint256 bidValue,
+        uint256 amountPaid
+    );
     event Settle(uint256 auctionId);
     event UpdateHash(uint256 auctionId, string hash);
 
@@ -101,11 +106,19 @@ contract Auction is
         uint256 _tokenId,
         uint256 _endsAt,
         uint256 _price
-    ) public payable virtual override Approved(_tokenId) Elligible returns (bool) {
+    )
+        public
+        payable
+        virtual
+        override
+        Approved(_tokenId)
+        Elligible
+        returns (bool)
+    {
         uint256 fee = listingFee();
-        
+
         require(msg.value == fee, "Auction Error: listing fee is not equal");
-        // payable(daoContract).transfer(msg.value);
+        payable(daoContract).transfer(msg.value);
 
         _auctions += 1;
         _auction[_auctions] = AuctionInfo(
@@ -132,7 +145,7 @@ contract Auction is
     }
 
     function listingFee() public view returns (uint256) {
-       return IDAO(daoContract).listingFee(_msgSender());
+        return IDAO(daoContract).listingFee(_msgSender());
     }
 
     /**
@@ -149,9 +162,9 @@ contract Auction is
         uint256 _amount
     ) public virtual override nonReentrant returns (bool) {
         AuctionInfo storage a = _auction[_auctionId];
-        
+
         uint8 merchantTax = IDAO(daoContract).platformTax(a.creator);
-        uint256 bidValue = (_amount * 100)/merchantTax;
+        uint256 bidValue = (_amount * 100) / merchantTax;
 
         require(
             a.end >= block.timestamp,
@@ -217,7 +230,7 @@ contract Auction is
      * @dev can restart the auction with a new endtime.
      */
     function restartAuction(uint256 _auctionId, uint256 _newEndTime)
-        public 
+        public
         virtual
         nonReentrant
         returns (bool)

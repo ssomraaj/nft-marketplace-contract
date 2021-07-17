@@ -8,12 +8,23 @@ import "../token/interfaces/IBEP20.sol";
 
 contract DAO is Context, IDAO {
     struct Proposal {
-        bytes hash;
         address merchant;
+        bytes hash;
+        bool approved;
         uint8 platformTax;
         uint256 listingFee;
         uint256 votes;
+    }
+
+    struct Distribution {
+        address[] earners;
         bool approved;
+        bool rejected;
+        bool settled;
+        uint256[] percentages;
+        uint256 voteFor;
+        uint256 voteAgainst;
+        uint256 createdAt;
     }
 
     address private _token;
@@ -21,15 +32,19 @@ contract DAO is Context, IDAO {
 
     uint256 private _merchantsCount;
     uint256 private _proposalsCount;
+    uint256 private _distributionCount;
 
     mapping(address => bool) private _merchant;
-    mapping(uint256 => Proposal) private _proposal;
     mapping(address => bool) private _listed;
     mapping(address => string) public ethWallet;
     mapping(address => string) public bscWallet;
     mapping(address => string) public btcWallet;
     mapping(address => uint256) public override listingFee;
     mapping(address => uint8) public override platformTax;
+
+    mapping(uint256 => Proposal) private _proposal;
+    mapping(address => mapping(uint256 => bool)) private _voted;
+    mapping(uint256 => Distribution) private _distribution;
 
     event CreateMerchant(
         bytes hash,
@@ -39,7 +54,13 @@ contract DAO is Context, IDAO {
         uint256 proposalId
     );
 
+    event CreateDistribution(uint256 distributionId, address[] earners, uint256[] percentages);
+
     event Vote(uint256 proposalId, address voter, uint256 znftShares);
+
+    event VoteDistribution(uint256 distributionId, uint256 votes, bool support);
+
+    event Distribute(uint256 distributionId);
 
     modifier onlyOwner() {
         require(_msgSender() == _admin, "DAO Error: caller not admin");
@@ -50,6 +71,8 @@ contract DAO is Context, IDAO {
         _token = _tokenContract;
         _admin = _msgSender();
     }
+
+    receive() external payable {}
 
     function createMerchant(
         string memory hash,
@@ -67,12 +90,12 @@ contract DAO is Context, IDAO {
         _proposalsCount += 1;
 
         _proposal[_proposalsCount] = Proposal(
-            bytes(hash),
             _msgSender(),
+            bytes(hash),
+            false,
             _platformTax,
             _listingFee,
-            0,
-            false
+            0
         );
         emit CreateMerchant(
             bytes(hash),
@@ -127,6 +150,11 @@ contract DAO is Context, IDAO {
     }
 
     function vote(uint256 proposalId) public virtual override returns (bool) {
+        require(
+            !_voted[_msgSender()][proposalId],
+            "Error: voter already voted"
+        );
+
         uint256 balance = IBEP20(_token).balanceOf(_msgSender());
         uint256 totalSupply = IBEP20(_token).totalSupply();
 
@@ -145,7 +173,133 @@ contract DAO is Context, IDAO {
             _merchantsCount += 1;
             _merchant[p.merchant] = true;
         }
+
+        _voted[_msgSender()][proposalId] = true;
+
         emit Vote(proposalId, _msgSender(), balance);
+        return true;
+    }
+
+    function createDistribution(
+        address[] memory _earners,
+        uint256[] memory _percentages
+    ) public virtual override returns (bool) {
+        require(
+            _earners.length == _percentages.length,
+            "DAO Error: invalid inputs"
+        );
+
+        uint256 balance = IBEP20(_token).balanceOf(_msgSender());
+        uint256 distributionId = _distributionCount + 1;
+        require(balance > 0, "DAO Error: znft share holder only can create");
+
+        Distribution storage d = _distribution[distributionId];
+        require(
+            validatePercentages(_percentages),
+            "DAO Error: invalid percentages"
+        );
+
+        d.earners = _earners;
+        d.percentages = _percentages;
+        _distributionCount += 1;
+
+        emit CreateDistribution(distributionId, _earners, _percentages);
+        return true;
+    }
+
+    function validatePercentages(uint256[] memory _percentages)
+        private
+        pure
+        returns (bool)
+    {
+        uint256 sum;
+        for (uint256 i = 0; i < _percentages.length; i++) {
+            sum += _percentages[i];
+        }
+        return sum == 100;
+    }
+
+    function voteDistribution(uint256 _distributionId, bool _support)
+        public
+        virtual
+        override
+        returns (bool)
+    {
+        uint256 balance = IBEP20(_token).balanceOf(_msgSender());
+        uint256 totalSupply = IBEP20(_token).totalSupply();
+
+        require(
+            _distributionId <= _distributionCount,
+            "Error: invalid distribution id"
+        );
+        require(balance > 0, "Error: znft share holders can only vote");
+
+        Distribution storage d = _distribution[_distributionId];
+        require(
+            !d.approved && !d.rejected && !d.settled,
+            "Error: distribution already resolved"
+        );
+
+        if (_support) {
+            d.voteFor += balance;
+        } else {
+            d.voteAgainst += balance;
+            if (d.voteAgainst > totalSupply / 20) {
+                d.rejected = true;
+            }
+        }
+
+        emit VoteDistribution(_distributionId, balance, _support);
+        return true;
+    }
+
+    function distribute(uint256 _distributionId)
+        public
+        virtual
+        override
+        returns (bool)
+    {
+        Distribution storage d = _distribution[_distributionId];
+        uint256 totalSupply = IBEP20(_token).totalSupply();
+
+        if (
+            (d.voteFor > totalSupply / 2) &&
+            block.timestamp > d.createdAt + 24 hours
+        ) {
+            d.approved = true;
+        }
+
+        require(
+            !d.settled && d.approved,
+            "Error: already settled (or) not approved"
+        );
+
+        uint256 ethBalance = address(this).balance;
+        uint256 wBtcBalance =
+            IBEP20(0xA4aBDaE0C0f861c11b353f7929fe6dB48535eaB3).balanceOf(
+                address(this)
+            );
+        uint256 wETHBalance =
+            IBEP20(0x24Cc33eBd310f9cBd12fA3C8E72b56fF138CA434).balanceOf(
+                address(this)
+            );
+
+        for (uint256 i = 0; i < d.earners.length; i++) {
+            payable(d.earners[i]).transfer(
+                (ethBalance * d.percentages[i]) / 100
+            );
+            IBEP20(0xA4aBDaE0C0f861c11b353f7929fe6dB48535eaB3).transfer(
+                d.earners[i],
+                (wBtcBalance * d.percentages[i]) / 100
+            );
+            IBEP20(0x24Cc33eBd310f9cBd12fA3C8E72b56fF138CA434).transfer(
+                d.earners[i],
+                (wETHBalance * d.percentages[i]) / 100
+            );
+        }
+
+        d.settled = true;
+        emit Distribute(_distributionId);
         return true;
     }
 
@@ -198,5 +352,22 @@ contract DAO is Context, IDAO {
 
         Proposal storage p = _proposal[proposalId];
         return (string(p.hash), p.merchant, p.votes, p.approved);
+    }
+
+    function distribution(uint256 _distributionId)
+        public
+        view
+        virtual
+        returns (Distribution memory)
+    {
+        require(
+            _distributionId <= _distributionCount,
+            "Error: invalid distribution ID"
+        );
+        return _distribution[_distributionId];
+    }
+
+    function totalDistributions() public view virtual returns (uint256) {
+        return _distributionCount;
     }
 }
