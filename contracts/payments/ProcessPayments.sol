@@ -347,7 +347,7 @@ contract ProcessPayments is IProcessPayments, Ownable {
         address _to
     ) internal virtual Available(_ticker) returns (bool) {
         address contractAddress = _contracts[bytes(_ticker)];
-        return IBEP20(contractAddress).transfer(_to, _value);
+        return IBEP20(contractAddress).transferFrom(_msgSender(), _to, _value);
     }
 
     /**

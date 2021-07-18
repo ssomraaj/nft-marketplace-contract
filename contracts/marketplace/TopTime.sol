@@ -137,6 +137,7 @@ contract TopTime is
             address(this),
             _tokenId
         );
+        payable(daoContract).transfer(msg.value);
         emit ListItem(_tokenId, _auctions, _msgSender(), _price, _toptime);
         return true;
     }

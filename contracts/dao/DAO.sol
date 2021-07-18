@@ -44,6 +44,7 @@ contract DAO is Context, IDAO {
 
     mapping(uint256 => Proposal) private _proposal;
     mapping(address => mapping(uint256 => bool)) private _voted;
+    mapping(address => mapping(uint256 => bool)) private _dVoted;
     mapping(uint256 => Distribution) private _distribution;
 
     event CreateMerchant(
@@ -54,7 +55,11 @@ contract DAO is Context, IDAO {
         uint256 proposalId
     );
 
-    event CreateDistribution(uint256 distributionId, address[] earners, uint256[] percentages);
+    event CreateDistribution(
+        uint256 distributionId,
+        address[] earners,
+        uint256[] percentages
+    );
 
     event Vote(uint256 proposalId, address voter, uint256 znftShares);
 
@@ -229,6 +234,10 @@ contract DAO is Context, IDAO {
         uint256 totalSupply = IBEP20(_token).totalSupply();
 
         require(
+            !_dVoted[_msgSender()][_distributionId],
+            "Error: user already voted"
+        );
+        require(
             _distributionId <= _distributionCount,
             "Error: invalid distribution id"
         );
@@ -249,6 +258,7 @@ contract DAO is Context, IDAO {
             }
         }
 
+        _dVoted[_msgSender()][_distributionId] = true;
         emit VoteDistribution(_distributionId, balance, _support);
         return true;
     }

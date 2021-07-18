@@ -98,13 +98,17 @@ contract FixedPriceSale is
 
     function createSale(uint256 _tokenId, uint256 _price)
         public
+        payable
         virtual
         override
         Approved(_tokenId)
         Elligible
         nonReentrant
         returns (bool)
-    {
+    {   
+        uint256 fee = listingFee();
+        require(msg.value == fee, "Marketplace Error: listing fee is not equal");
+
         _sales += 1;
 
         _sale[_sales] = Sale(
@@ -120,8 +124,13 @@ contract FixedPriceSale is
             _tokenId
         );
 
+        payable(daoContract).transfer(msg.value);
         emit CreateSale(_sales, _tokenId, _price, _msgSender());
         return true;
+    }
+
+    function listingFee() public view returns (uint256) {
+        return IDAO(daoContract).listingFee(_msgSender());
     }
 
     /**
@@ -148,8 +157,14 @@ contract FixedPriceSale is
         );
 
         s.status = SaleStatus.COMPLETED;
-        (bool status, uint256 tokens) = payment(_currency, s.price);
-        bool status1 = settle(_currency, tokens, s.creator);
+        uint256 platformFee = IDAO(daoContract).platformTax(s.creator);
+        uint256 _amount = (s.price * platformFee) / 100;
+
+        (bool status, uint256 tokens) = payment(_currency, _amount);
+        
+        uint256 acTokens = (tokens * 100) / platformFee;
+        uint256 cTokens = (acTokens * (100 - platformFee))/100;
+        bool status1 = settle(_currency, cTokens, s.creator);
 
         _buyer[_saleId] = Buyer(bytes(_currency), tokens, block.timestamp);
         IBEP721(nftContract).transferFrom(

@@ -21,7 +21,7 @@ interface IFixedPriceSale {
   * 
   * @return bool representing the status of the creation of sale.
   */
-  function createSale(uint256 tokenId, uint256 price) external returns (bool);
+  function createSale(uint256 tokenId, uint256 price) external payable returns (bool);
 
    /**
      * @dev buy sale with a valid acceptable asset (Tokens Not Stablecoins).
